@@ -1,12 +1,19 @@
 {
- "expo":{
-  "name":"Budget254 PAYE Calculator",
-  "slug":"budget254-paye",
-  "version":"1.0.0",
-  "orientation":"portrait",
-  "scheme":"budget254paye",
-  "userInterfaceStyle":"automatic",
-  "android":{"package":"co.ke.budget254.paye","adaptiveIcon":{"backgroundColor":"#ffffff"}},
-  "plugins":["expo-router","expo-secure-store"]
- }
+  "expo": {
+    "name": "Budget254 PAYE Calculator",
+    "slug": "budget254-paye",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "budget254paye",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "co.ke.budget254.paye",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "allowBackup": false
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
 }
