@@ -13,7 +13,12 @@ import (
 
 type Handler struct{ Service service.Service }
 
-type registerRequest struct{ Email, Password, FirstName, LastName string }
+type registerRequest struct {
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
 type loginRequest struct{ Email, Password string }
 type refreshRequest struct{ RefreshToken string `json:"refresh_token"` }
 type changePasswordRequest struct {
