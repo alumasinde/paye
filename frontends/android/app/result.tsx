@@ -10,7 +10,7 @@ import { ResultRow } from "../components/ResultRow";
 import { MoneyText } from "../components/MoneyText";
 import { Collapsible } from "../components/Collapsible";
 import { AccountBar } from "../components/AccountBar";
-import type { Calculation } from "../lib/types";
+import type { BandTrace, Calculation, Deduction } from "../lib/types";
 import { colors } from "../lib/theme";
 import { buildShareSummary } from "../lib/shareSummary";
 import { deductionInfoFor } from "../lib/deductionInfo";
@@ -19,6 +19,69 @@ import { saveCalculation } from "../lib/accountApi";
 import { APIClientError } from "../lib/httpClient";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+
+function asText(value: unknown, fallback = ""): string {
+  if (value === null || value === undefined) return fallback;
+  const normalized = String(value);
+  return normalized.trim().length > 0 ? normalized : fallback;
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value as T[] : [];
+}
+
+function normalizeDeduction(value: unknown, fallbackCode: string): Deduction {
+  const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+
+  return {
+    code: asText(item.code, fallbackCode),
+    name: asText(item.name, "Unknown deduction"),
+    amount: asText(item.amount, "0"),
+    reduces_taxable_income: Boolean(item.reduces_taxable_income),
+  };
+}
+
+function normalizeTrace(value: unknown): BandTrace[] {
+  return asArray<Record<string, unknown>>(value).map((item) => ({
+    from: asText(item.from, "0"),
+    to: item.to === null || item.to === undefined ? undefined : asText(item.to),
+    rate: asText(item.rate, "0"),
+    tax: asText(item.tax, "0"),
+  }));
+}
+
+function normalizeCalculation(value: unknown): Calculation | null {
+  if (!value || typeof value !== "object") return null;
+
+  const data = value as Record<string, unknown>;
+
+  return {
+    calculation_date: asText(data.calculation_date, ""),
+    gross_salary: asText(data.gross_salary, "0"),
+    taxable_income: asText(data.taxable_income, "0"),
+    paye_before_relief: asText(data.paye_before_relief, "0"),
+    relief: asText(data.relief, "0"),
+    paye: asText(data.paye, "0"),
+    statutory_deductions: asArray<unknown>(data.statutory_deductions).map((item) =>
+      normalizeDeduction(item, "UNKNOWN"),
+    ),
+    custom_deductions: asArray<unknown>(data.custom_deductions).map((item) =>
+      normalizeDeduction(item, "CUSTOM"),
+    ),
+    total_deductions: asText(data.total_deductions, "0"),
+    net_salary: asText(data.net_salary, "0"),
+    rule_versions:
+      data.rule_versions && typeof data.rule_versions === "object" && !Array.isArray(data.rule_versions)
+        ? Object.fromEntries(
+            Object.entries(data.rule_versions as Record<string, unknown>).map(([key, item]) => [
+              key,
+              asText(item),
+            ]),
+          )
+        : {},
+    trace: normalizeTrace(data.trace),
+  };
+}
 
 export default function Result() {
   const params = useLocalSearchParams<{ data?: string }>();
@@ -30,7 +93,7 @@ export default function Result() {
 
   let data: Calculation | null = null;
   try {
-    data = params.data ? (JSON.parse(params.data) as Calculation) : null;
+    data = params.data ? normalizeCalculation(JSON.parse(params.data)) : null;
   } catch {
     data = null;
   }
@@ -63,8 +126,11 @@ export default function Result() {
   }
 
   async function save() {
+    if (saveState === "saving") return;
+
     setSaveState("saving");
     setSaveError("");
+
     try {
       await saveCalculation(calculation, label);
       setSaveState("saved");
@@ -146,7 +212,7 @@ export default function Result() {
 
       <Text style={s.section}>Statutory deductions</Text>
       <Card style={s.rowCard}>
-        {data.statutory_deductions.length ? (
+        {data.statutory_deductions.length > 0 ? (
           data.statutory_deductions.map((item, index) => {
             const info = deductionInfoFor(item.code);
             return (
@@ -165,7 +231,7 @@ export default function Result() {
         )}
       </Card>
 
-      {data.custom_deductions.length ? (
+      {data.custom_deductions.length > 0 ? (
         <>
           <Text style={s.section}>Custom deductions</Text>
           <Card style={s.rowCard}>
@@ -176,7 +242,7 @@ export default function Result() {
         </>
       ) : null}
 
-      {data.trace?.length ? (
+      {data.trace.length > 0 ? (
         <>
           <Text style={s.section}>PAYE explanation</Text>
           <Card style={s.rowCard}>
