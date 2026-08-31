@@ -4,14 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/alumasinde/budget254-paye-api/internal/config"
-	"github.com/alumasinde/budget254-paye-api/internal/response"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/alumasinde/budget254-paye-api/internal/config"
+	"github.com/alumasinde/budget254-paye-api/internal/response"
 )
 
 type key string
@@ -28,7 +31,12 @@ func RequestID(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestIDKey, id)))
 	})
 }
-func RequestIDFromContext(c context.Context) string { v, _ := c.Value(requestIDKey).(string); return v }
+
+func RequestIDFromContext(c context.Context) string {
+	v, _ := c.Value(requestIDKey).(string)
+	return v
+}
+
 func validID(v string) bool {
 	if len(v) < 8 || len(v) > 128 {
 		return false
@@ -40,6 +48,7 @@ func validID(v string) bool {
 	}
 	return true
 }
+
 func randomID() string {
 	b := make([]byte, 16)
 	if _, e := rand.Read(b); e != nil {
@@ -47,6 +56,7 @@ func randomID() string {
 	}
 	return hex.EncodeToString(b)
 }
+
 func Recovery(l *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +70,7 @@ func Recovery(l *slog.Logger) func(http.Handler) http.Handler {
 		})
 	}
 }
+
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -70,6 +81,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
 func MaxBodyBytes(n int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,33 +90,71 @@ func MaxBodyBytes(n int64) func(http.Handler) http.Handler {
 		})
 	}
 }
+
 func CORS(c config.CORSConfig) func(http.Handler) http.Handler {
-	allowed := map[string]bool{}
-	for _, o := range c.AllowedOrigins {
-		allowed[o] = true
+	allowed := make(map[string]bool, len(c.AllowedOrigins))
+	for _, origin := range c.AllowedOrigins {
+		allowed[origin] = true
 	}
+
 	methods := strings.Join(c.AllowedMethods, ", ")
 	headers := strings.Join(c.AllowedHeaders, ", ")
+
+	isAllowed := func(origin string) bool {
+		if origin == "" {
+			return false
+		}
+		if allowed[origin] {
+			return true
+		}
+		return c.AllowPrivateNetworkOrigins && isPrivateNetworkOrigin(origin)
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			o := r.Header.Get("Origin")
-			if o != "" && allowed[o] {
-				w.Header().Set("Access-Control-Allow-Origin", o)
+			origin := r.Header.Get("Origin")
+
+			if isAllowed(origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")
 				w.Header().Set("Access-Control-Allow-Methods", methods)
 				w.Header().Set("Access-Control-Allow-Headers", headers)
+				if c.MaxAgeSeconds > 0 {
+					w.Header().Set("Access-Control-Max-Age", strconv.Itoa(c.MaxAgeSeconds))
+				}
 			}
+
 			if r.Method == http.MethodOptions {
-				if o != "" && !allowed[o] {
-					response.Error(w, 403, "ORIGIN_NOT_ALLOWED", "origin not allowed", RequestIDFromContext(r.Context()))
+				if !isAllowed(origin) {
+					response.Error(w, http.StatusForbidden, "ORIGIN_NOT_ALLOWED", "origin not allowed", RequestIDFromContext(r.Context()))
 					return
 				}
-				w.WriteHeader(204)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func isPrivateNetworkOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Scheme != "http" || parsed.Hostname() == "" {
+		return false
+	}
+
+	host := parsed.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+
+	return ip.IsLoopback() || ip.IsPrivate()
 }
 
 type window struct {
@@ -147,6 +197,7 @@ func RateLimit(c config.RateLimitConfig, trust bool) func(http.Handler) http.Han
 		})
 	}
 }
+
 func clientIP(r *http.Request, trust bool) string {
 	if trust {
 		if x := r.Header.Get("X-Forwarded-For"); x != "" {
