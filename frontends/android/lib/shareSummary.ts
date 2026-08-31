@@ -1,12 +1,18 @@
 import type { Calculation } from "./types";
 import { kes } from "./money";
 
+function text(value: unknown, fallback = "Not available"): string {
+  if (value === null || value === undefined) return fallback;
+  const normalized = String(value).trim();
+  return normalized || fallback;
+}
+
 // Plain-text summary used for both the native share sheet and the
 // clipboard copy - one function so the two stay identical.
 export function buildShareSummary(data: Calculation): string {
   return [
     "Budget254 PAYE Estimate",
-    `Calculated for ${data.calculation_date}`,
+    `Calculated for ${text(data.calculation_date)}`,
     "",
     `Gross salary: ${kes(data.gross_salary)}`,
     `PAYE: ${kes(data.paye)}`,
