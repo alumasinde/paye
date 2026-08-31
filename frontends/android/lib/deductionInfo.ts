@@ -9,6 +9,7 @@ export const DEDUCTION_INFO: Record<string, string> = {
   AHL: "Affordable Housing Levy - a mandatory contribution toward Kenya's affordable housing program.",
 };
 
-export function deductionInfoFor(code: string): string | null {
-  return DEDUCTION_INFO[code.toUpperCase()] ?? null;
+export function deductionInfoFor(code: string | null | undefined): string | null {
+  const normalizedCode = String(code ?? "").trim().toUpperCase();
+  return normalizedCode ? DEDUCTION_INFO[normalizedCode] ?? null : null;
 }
