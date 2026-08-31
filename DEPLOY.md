@@ -35,7 +35,7 @@ sudo usermod -aG docker $USER
 sudo mkdir -p /opt/budget254-paye
 sudo chown $USER /opt/budget254-paye
 git clone <your-repo-url> /opt/budget254-paye
-cd /opt/budget254-paye/paye
+cd /opt/budget254-paye
 ```
 
 (The path `/opt/budget254-paye` is what the CI deploy job assumes - see
@@ -123,7 +123,7 @@ Once `https://api.budget254.co.ke` is live, update
 `frontends/android/.env`:
 
 ```
-EXPO_PUBLIC_API_URL=https://api.budget254.co.ke
+EXPO_PUBLIC_API_BASE_URL=https://api.budget254.co.ke
 ```
 
 This is the change that finally makes the offline detection, retry
