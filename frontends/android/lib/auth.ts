@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 const KEY = "budget254.auth.v1";
@@ -9,13 +10,30 @@ export type Session = {
   user: { id: string; email: string; first_name: string; last_name: string };
 };
 
-// SecureStore can throw on some Android keystores (e.g. a corrupted
-// keystore, or certain first-run edge cases) - treat that as "no
-// session" rather than letting it bubble up and crash whichever screen
-// happened to check for a logged-in user.
+function isWeb(): boolean {
+  return Platform.OS === "web";
+}
+
+function getWebStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+// expo-secure-store provides encrypted storage on Android/iOS. The web
+// implementation does not provide the same SecureStore API, so browser
+// testing uses localStorage while the installed mobile app keeps using
+// SecureStore.
 export async function getSession(): Promise<Session | null> {
   try {
-    const raw = await SecureStore.getItemAsync(KEY);
+    const raw = isWeb()
+      ? getWebStorage()?.getItem(KEY) ?? null
+      : await SecureStore.getItemAsync(KEY);
+
     return raw ? (JSON.parse(raw) as Session) : null;
   } catch {
     return null;
@@ -23,14 +41,29 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export async function setSession(session: Session): Promise<void> {
-  await SecureStore.setItemAsync(KEY, JSON.stringify(session));
+  const value = JSON.stringify(session);
+
+  if (isWeb()) {
+    const storage = getWebStorage();
+    if (!storage) {
+      throw new Error("Browser storage is unavailable.");
+    }
+    storage.setItem(KEY, value);
+    return;
+  }
+
+  await SecureStore.setItemAsync(KEY, value);
 }
 
 export async function clearSession(): Promise<void> {
   try {
+    if (isWeb()) {
+      getWebStorage()?.removeItem(KEY);
+      return;
+    }
+
     await SecureStore.deleteItemAsync(KEY);
   } catch {
-    // Best effort - if the keystore can't delete it, there's nothing
-    // more the caller can do; treat the session as gone either way.
+    // Best effort cleanup.
   }
 }
