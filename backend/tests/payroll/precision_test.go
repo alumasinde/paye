@@ -1,0 +1,3 @@
+package payroll_test
+import("testing";"github.com/alumasinde/budget254-paye-api/internal/payroll/engine";"github.com/alumasinde/budget254-paye-api/internal/rules/model";"github.com/shopspring/decimal")
+func TestDecimalPrecision(t *testing.T){r:=model.ResolvedRule{Definition:model.Definition{Code:"X",Name:"X"},VersionCode:"X",CalculationMethod:"PERCENTAGE",CalculationOrder:1,AffectsNetPay:true,Parameters:[]model.Parameter{{Name:"rate",Decimal:s("0.3333333333")}}}; out,e:=engine.Calculate(engine.Input{Gross:decimal.RequireFromString("0.30")},[]model.ResolvedRule{r});if e!=nil{t.Fatal(e)};if out.StatutoryDeductions[0].Amount!="0.10"{t.Fatal(out.StatutoryDeductions[0].Amount)}}

@@ -1,0 +1,6 @@
+# Never let a real secrets file ride along into a build layer, even
+# though the api image's final stage only copies the compiled binary.
+.env
+.env.production
+.git
+*.md

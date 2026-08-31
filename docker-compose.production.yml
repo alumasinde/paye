@@ -1,0 +1,93 @@
+services:
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env.production
+    # These override whatever backend/.env.production says for the same
+    # keys, so the database password only has to be typed once, in the
+    # root .env (see .env.production.example) - not duplicated here and
+    # in backend/.env.production where it could drift out of sync.
+    environment:
+      DB_HOST: mysql
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # One-off tool, not a long-running service - it applies pending SQL
+  # migrations and exits. Excluded from the default `docker compose up`
+  # by its profile; run explicitly:
+  #   docker compose -f docker-compose.production.yml --profile tools run --rm migrate up
+  #   docker compose -f docker-compose.production.yml --profile tools run --rm migrate status
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.migrate
+    env_file:
+      - ./backend/.env.production
+    environment:
+      DB_HOST: mysql
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+
+  # Public entry point: terminates HTTPS (automatic Let's Encrypt cert
+  # for $DOMAIN, auto-renewed) and reverse-proxies to the api container
+  # over the internal Docker network. This is what makes
+  # https://api.budget254.co.ke actually work - the api container itself
+  # is only reachable on localhost (see its ports: above).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:

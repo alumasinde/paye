@@ -1,0 +1,33 @@
+/* Default color palette, as CSS custom properties on :root. These are the
+ * fallback values used if /config.txt is missing or a key is left out.
+ * src/theme.ts overwrites the ones config.txt does supply at runtime, via
+ * document.documentElement.style.setProperty - no rebuild needed to
+ * change colors, just edit public/config.txt and refresh the browser.
+ *
+ * The first block (--color-primary through --color-success) is exactly
+ * the set of keys config.txt understands. The second block derives a few
+ * more specific colors from those with color-mix() so the rest of the
+ * stylesheet has what it needs without config.txt having to spell out
+ * every shade by hand.
+ */
+:root {
+  --color-primary: #15171a;
+  --color-primary-text: #ffffff;
+  --color-accent: #2f6feb;
+  --color-background: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-text: #1b1d21;
+  --color-muted-text: #6b7280;
+  --color-border: #e4e6ea;
+  --color-danger: #a72828;
+  --color-success: #1f8a4c;
+
+  --color-sidebar-nav-text: color-mix(in srgb, var(--color-primary-text) 78%, var(--color-primary));
+  --color-sidebar-nav-hover-bg: color-mix(in srgb, var(--color-primary) 85%, white 15%);
+  --color-secondary-bg: color-mix(in srgb, var(--color-border) 60%, var(--color-surface));
+  --color-secondary-text: var(--color-text);
+  --color-success-bg: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  --color-danger-bg: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
+  --color-badge-bg: color-mix(in srgb, var(--color-border) 45%, var(--color-surface));
+  --color-component-bg: color-mix(in srgb, var(--color-surface) 97%, var(--color-text));
+}

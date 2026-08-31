@@ -1,0 +1,10 @@
+# Root-level context, used by the migrate image build (see
+# backend/Dockerfile.migrate). Keeps the Android/admin frontends and
+# their node_modules out of the build context sent to the Docker daemon.
+.env
+.env.production
+.git
+frontends/**/node_modules
+frontends/**/.expo
+frontends/**/dist
+frontends/**/build

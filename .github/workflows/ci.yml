@@ -1,0 +1,85 @@
+name: Budget254 PAYE CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: paye/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - run: go mod download
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go test -race ./...
+      - run: go build ./cmd/api
+
+  admin:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: paye/frontends/admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: paye/frontends/admin/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  # Deploys the backend to production. Only runs on a push to main (never
+  # on a pull_request, so a fork or an unmerged branch can't trigger a
+  # deploy) and only after both build/test jobs above have passed - a red
+  # backend or admin job blocks the deploy instead of shipping a broken
+  # build.
+  #
+  # Requires these repository secrets (Settings -> Secrets and variables
+  # -> Actions), documented in DEPLOY.md:
+  #   DEPLOY_HOST      - the VPS's IP or hostname
+  #   DEPLOY_USER      - SSH user with docker permissions
+  #   DEPLOY_SSH_KEY   - private key matching a public key already on the VPS
+  #   DEPLOY_PORT      - SSH port (optional, defaults to 22)
+  deploy:
+    needs: [backend, admin]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/budget254-paye
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose -f docker-compose.production.yml up -d --build --remove-orphans
+
+      # Fails the workflow (and should alert you, if you have GitHub
+      # Actions failure notifications on) if the deploy didn't actually
+      # come up healthy - a container that starts but crash-loops
+      # shouldn't be treated as a successful deploy.
+      - name: Verify deployment health
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf https://api.budget254.co.ke/health; then
+              echo "Deployment healthy"
+              exit 0
+            fi
+            echo "Not healthy yet, retrying in 5s ($i/10)..."
+            sleep 5
+          done
+          echo "Deployment did not become healthy in time"
+          exit 1

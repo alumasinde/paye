@@ -1,0 +1,21 @@
+# Builds the standalone schema-migration tool (cmd/migrate). Unlike the
+# api image, the build context for this one must be the repo root
+# (paye/), not backend/ - it needs both backend/ (Go source) and
+# migrations/ (the .sql files), which live as siblings.
+#
+# Build from paye/:
+#   docker build -f backend/Dockerfile.migrate -t budget254-migrate .
+# Or via docker-compose.production.yml's "migrate" service (preferred).
+FROM golang:1.24-alpine AS build
+WORKDIR /src/backend
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/ .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/migrate /migrate
+COPY migrations /migrations
+USER nonroot:nonroot
+ENV MIGRATIONS_DIR=/migrations
+ENTRYPOINT ["/migrate"]

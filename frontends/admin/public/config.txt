@@ -1,0 +1,20 @@
+# Budget254 PAYE Admin - color configuration
+#
+# Edit these values and refresh the browser - no rebuild or restart
+# needed, this file is fetched fresh on every page load.
+#
+# Format: one "key=value" per line. Any CSS color value works (hex,
+# rgb(), hsl(), a named color). Lines starting with # are comments.
+# Any key you remove or leave blank falls back to the built-in default
+# in src/styles/theme.css.
+
+primary=#15171a
+primaryText=#ffffff
+accent=#2f6feb
+background=#f6f7f9
+surface=#ffffff
+text=#1b1d21
+mutedText=#6b7280
+border=#e4e6ea
+danger=#a72828
+success=#1f8a4c

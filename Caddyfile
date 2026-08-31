@@ -1,0 +1,20 @@
+# Caddy gets automatic HTTPS (Let's Encrypt, auto-renewed) for free just
+# from having a real domain pointed at this server - no certbot, no
+# manual nginx TLS config. {$DOMAIN} and {$ACME_EMAIL} come from the
+# root .env file via docker-compose.production.yml.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+
+	# Caddy stops routing to the api container if /health fails, instead
+	# of forwarding requests to a backend that's mid-crash-loop or still
+	# starting up.
+	reverse_proxy api:8080 {
+		health_uri /health
+		health_interval 10s
+		health_timeout 3s
+	}
+}

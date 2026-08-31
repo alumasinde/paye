@@ -1,0 +1,37 @@
+[
+  {
+    "path": "docs/AUDIT_REPORT.md",
+    "sha256": "2bad73f87f4161bde8168fb8540a3dd3469b363d4751f4e1bfbc4c9453deed1b",
+    "bytes": 2017
+  },
+  {
+    "path": "docs/README.md",
+    "sha256": "5f37f7a552cdd44c77889a3dea3a4681c0de988afe59e71f8462ecf467e77bca",
+    "bytes": 2144
+  },
+  {
+    "path": "migrations/001_budget254_paye.sql",
+    "sha256": "5ff26b6a7ee1da914ee0313ecbc4af897d24d0d0b5dfd6107eb81be11d1d6f1c",
+    "bytes": 33239
+  },
+  {
+    "path": "migrations/002_seed_kenya_payroll_rules.sql",
+    "sha256": "5008b8f6cbeb1f976c2164e89d22535eb80ce051dbb4903e4751854cd23c48a2",
+    "bytes": 40627
+  },
+  {
+    "path": "migrations/003_improve_budget254_paye_schema.sql",
+    "sha256": "c748b4be607339371f0a3fc5aee5b3c292404aa3723ff990afd4d0a2e63c9493",
+    "bytes": 18064
+  },
+  {
+    "path": "migrations/004_correct_and_refine_kenya_payroll_rules.sql",
+    "sha256": "2e9e63f6187115ff6167cde560b7d4bacca03eff6d8411d32a3efc98eb681a7d",
+    "bytes": 15342
+  },
+  {
+    "path": "migrations/005_audit_checks.sql",
+    "sha256": "ad3a940740f7ad841fccdf6375834c2d5206145cc72febd3751cde2f31357979",
+    "bytes": 6186
+  }
+]
