@@ -19,7 +19,7 @@ export function formatAmountInput(raw: string | null | undefined): string {
   if (firstDot !== -1) {
     cleaned =
       cleaned.slice(0, firstDot + 1) +
-      cleaned.slice(firstDot + 1).replace(/./g, "");
+      cleaned.slice(firstDot + 1).replace(/\\./g, "");
   }
 
   const [whole = "", decimal] = cleaned.split(".");
