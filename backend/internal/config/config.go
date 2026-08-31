@@ -36,6 +36,7 @@ type DatabaseConfig struct {
 type CORSConfig struct {
 	AllowedOrigins, AllowedMethods, AllowedHeaders []string
 	MaxAgeSeconds                                  int
+	AllowPrivateNetworkOrigins                     bool
 }
 type RateLimitConfig struct {
 	Enabled    bool
@@ -107,6 +108,12 @@ func Load() (Config, error) {
 	if c.CORS.MaxAgeSeconds, err = envInt("CORS_MAX_AGE_SECONDS", 600); err != nil {
 		return c, err
 	}
+	if c.CORS.AllowPrivateNetworkOrigins, err = envBool(
+		"CORS_ALLOW_PRIVATE_NETWORK_ORIGINS",
+		c.App.Environment == "development",
+	); err != nil {
+		return c, err
+	}
 	if c.RateLimit.Enabled, err = envBool("RATE_LIMIT_ENABLED", true); err != nil {
 		return c, err
 	}
@@ -137,6 +144,9 @@ func (c Config) Validate() error {
 	}
 	if c.HTTP.MaxRequestBodyBytes < 1 {
 		return errors.New("invalid request body limit")
+	}
+	if c.CORS.MaxAgeSeconds < 0 {
+		return errors.New("invalid CORS max age")
 	}
 	if c.RateLimit.Enabled && (c.RateLimit.Requests < 1 || c.RateLimit.Window <= 0 || c.RateLimit.MaxClients < 1) {
 		return errors.New("invalid rate limit")
