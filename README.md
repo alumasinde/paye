@@ -22,6 +22,7 @@ Integrate these packages into the existing backend composition root rather than 
 
 # Terminal 1
 cd backend
+git pull origin main
 go run ./cmd/migrate up
 go run ./cmd/api
 
