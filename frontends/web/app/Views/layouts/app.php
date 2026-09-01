@@ -15,7 +15,7 @@
         <nav>
             <a class="nav-item <?= ($activeNav ?? '') === 'dashboard' ? 'active' : '' ?>" href="/dashboard">Dashboard</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'companies' ? 'active' : '' ?>" href="/companies">Companies</a>
-            <span class="nav-item disabled">Employees</span>
+            <a class="nav-item <?= ($activeNav ?? '') === 'employees' ? 'active' : '' ?>" href="/employees">Employees</a>
             <span class="nav-item disabled">Payroll</span>
             <span class="nav-item disabled">Reports</span>
         </nav>
