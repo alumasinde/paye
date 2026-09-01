@@ -135,11 +135,19 @@ foreach($employees as $employee){$es=(string)($employee['status']??'PENDING'); i
     </div>
 </section>
 
+<section id="inputs" class="card">
+ <div class="section-heading"><div><p class="eyebrow">PHASE 3 · PAYROLL INPUTS</p><h2>Payroll-wide and employee inputs</h2><p class="muted">Apply a one-off item to every employee, such as an KES 800 welfare deduction. Employee-specific items such as SACCO deductions remain in each employee's breakdown.</p></div></div>
+ <?php if($editable): ?>
+ <form method="post" action="/payroll/input/bulk" class="selector-card"><input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>"><input type="hidden" name="company_id" value="<?= h($companyId) ?>"><input type="hidden" name="run_id" value="<?= h((string)($run['id']??'')) ?>">
+ <div class="selectors"><label>Input name<input name="name" required maxlength="150" placeholder="e.g. Staff Welfare"></label><label>Type<select name="kind"><option value="DEDUCTION">Deduction</option><option value="EARNING">Earning</option></select></label><label>Category<select name="category"><option value="WELFARE">Welfare</option><option value="SACCO">SACCO</option><option value="LOAN">Loan</option><option value="ADVANCE">Salary advance</option><option value="INSURANCE">Insurance</option><option value="ALLOWANCE">Allowance</option><option value="BONUS">Bonus</option><option value="OVERTIME">Overtime</option><option value="COMMISSION">Commission</option><option value="OTHER">Other</option></select></label><label>Amount<input name="amount" required inputmode="decimal" step="0.01" min="0.01" placeholder="800.00"></label><label>Payee / destination<input name="payee" placeholder="e.g. Staff Welfare Fund or SACCO"></label><label>Reference<input name="reference_no" placeholder="Optional member/account reference"></label><label><span class="muted"><input type="checkbox" name="taxable"> Taxable earning</span><span class="muted"><input type="checkbox" name="reduces_taxable_income"> Reduces taxable income</span></label><button class="button" type="submit">Apply to all employees</button></div></form>
+ <?php else: ?><p class="muted">Inputs are frozen because this payroll is no longer editable.</p><?php endif; ?>
+</section>
+
 <section id="adjustments" class="card">
     <div class="section-heading">
         <div>
             <p class="eyebrow">PAYROLL BREAKDOWN</p>
-            <h2>Earnings & adjustments</h2>
+            <h2>Employee-specific inputs</h2>
             <p class="muted">Add one-off earnings or deductions to this payroll run. Changes are stored with this payroll snapshot and are not written back to the employee's salary history.</p>
         </div>
         <?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?>
@@ -213,8 +221,8 @@ foreach($employees as $employee){$es=(string)($employee['status']??'PENDING'); i
                 <input type="hidden" name="employee_run_id" value="<?= h((string)($employee['id']??'')) ?>">
                 <input type="hidden" name="operation" value="create">
                 <div class="selectors">
-                    <label>Item name<input name="name" maxlength="150" required placeholder="e.g. Transport allowance or Salary advance"></label>
-                    <label>Type<select name="kind" required><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select></label>
+                    <label>Item name<input name="name" maxlength="150" required placeholder="e.g. SACCO contribution"></label>
+                    <label>Type<select name="kind" required><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select></label><label>Category<select name="category"><option value="SACCO">SACCO</option><option value="LOAN">Loan</option><option value="ADVANCE">Salary advance</option><option value="INSURANCE">Insurance</option><option value="WELFARE">Welfare</option><option value="ALLOWANCE">Allowance</option><option value="BONUS">Bonus</option><option value="OVERTIME">Overtime</option><option value="COMMISSION">Commission</option><option value="OTHER">Other</option></select></label><label>Payee / destination<input name="payee" placeholder="e.g. ABC SACCO"></label><label>Reference<input name="reference_no" placeholder="Member/account reference"></label>
                     <label>Amount<input name="amount" inputmode="decimal" min="0.01" step="0.01" required placeholder="0.00"></label>
                     <label>Tax treatment
                         <span class="muted"><input type="checkbox" name="taxable" checked> Taxable earning</span>
