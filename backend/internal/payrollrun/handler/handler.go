@@ -1,0 +1,42 @@
+package handler
+
+import (
+ "encoding/json"
+ "errors"
+ "net/http"
+ "strings"
+
+ companyRepo "github.com/alumasinde/budget254-paye-api/internal/company/repository"
+ "github.com/alumasinde/budget254-paye-api/internal/middleware"
+ "github.com/alumasinde/budget254-paye-api/internal/payrollrun/model"
+ repo "github.com/alumasinde/budget254-paye-api/internal/payrollrun/repository"
+ "github.com/alumasinde/budget254-paye-api/internal/payrollrun/service"
+ "github.com/alumasinde/budget254-paye-api/internal/response"
+)
+
+type Handler struct{ Service service.Service }
+
+func (h Handler) Create(w http.ResponseWriter,r *http.Request){
+ var in model.CreateInput
+ d:=json.NewDecoder(http.MaxBytesReader(w,r.Body,1<<20));d.DisallowUnknownFields()
+ if err:=d.Decode(&in);err!=nil{fail(w,r,http.StatusBadRequest,"INVALID_REQUEST","invalid request");return}
+ out,err:=h.Service.Create(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),in)
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusCreated,out)
+}
+func (h Handler) List(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.List(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,map[string]any{"payroll_runs":out})
+}
+func (h Handler) Get(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.Get(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}
+func writeError(w http.ResponseWriter,r *http.Request,err error){
+ switch{
+ case errors.Is(err,companyRepo.ErrForbidden):fail(w,r,http.StatusForbidden,"FORBIDDEN","you do not have permission for this action")
+ case errors.Is(err,repo.ErrNotFound):fail(w,r,http.StatusNotFound,"NOT_FOUND","requested resource was not found")
+ case errors.Is(err,repo.ErrConflict):fail(w,r,http.StatusConflict,"CONFLICT","a payroll run already exists for this period")
+ default:m:=strings.TrimSpace(err.Error());if m==""{m="request could not be completed"};fail(w,r,http.StatusUnprocessableEntity,"REQUEST_FAILED",m)
+ }
+}
+func fail(w http.ResponseWriter,r *http.Request,status int,code,message string){response.Fail(w,status,code,message,middleware.ID(r.Context()),nil)}
