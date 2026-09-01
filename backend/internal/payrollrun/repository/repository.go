@@ -26,17 +26,32 @@ func (r Repository) companyID(ctx context.Context, publicID string) (uint64,erro
  return id,err
 }
 
-func (r Repository) Create(ctx context.Context, companyPublicID, period string, start,end time.Time) (model.Detail,error) {
- cid,err:=r.companyID(ctx,companyPublicID); if err!=nil{return model.Detail{},err}
- tx,err:=r.DB.BeginTx(ctx,nil); if err!=nil{return model.Detail{},err}; defer tx.Rollback()
- publicID:=uuid.NewString()
- _,err=tx.ExecContext(ctx,`INSERT INTO payroll_runs(public_id,company_id,period_key,period_start,period_end,status)
- VALUES(?,?,?,?,?,'DRAFT')`,publicID,cid,period,start,end)
- if err!=nil {
-  if strings.Contains(strings.ToLower(err.Error()),"duplicate"){return model.Detail{},ErrConflict}
-  return model.Detail{},err
+func (r Repository) Create(ctx context.Context, companyPublicID, period string, start, end time.Time) (model.Detail, error) {
+ cid, err := r.companyID(ctx, companyPublicID)
+ if err != nil { return model.Detail{}, err }
+
+ tx, err := r.DB.BeginTx(ctx, nil)
+ if err != nil { return model.Detail{}, err }
+ defer tx.Rollback()
+
+ publicID := uuid.NewString()
+ result, err := tx.ExecContext(ctx, `INSERT INTO payroll_runs(public_id,company_id,period_key,period_start,period_end,status)
+ VALUES(?,?,?,?,?,'DRAFT')`, publicID, cid, period, start, end)
+ if err != nil {
+  if strings.Contains(strings.ToLower(err.Error()), "duplicate") { return model.Detail{}, ErrConflict }
+  return model.Detail{}, err
  }
- rows,err:=tx.QueryContext(ctx,`SELECT e.id,e.public_id,e.employee_number,e.first_name,COALESCE(e.middle_name,''),e.last_name,
+
+ runID, err := result.LastInsertId()
+ if err != nil { return model.Detail{}, err }
+
+ type snapshot struct {
+  employeeID uint64
+  number, first, middle, last, salary, frequency string
+ }
+ employees := make([]snapshot, 0)
+
+ rows, err := tx.QueryContext(ctx, `SELECT e.id,e.employee_number,e.first_name,COALESCE(e.middle_name,''),e.last_name,
  CAST(s.basic_salary AS CHAR),s.pay_frequency
  FROM employees e
  JOIN employee_salary_history s ON s.id=(
@@ -47,21 +62,35 @@ func (r Repository) Create(ctx context.Context, companyPublicID, period string, 
  )
  WHERE e.company_id=? AND e.status='ACTIVE' AND e.employment_date<=?
  AND (e.termination_date IS NULL OR e.termination_date>=?)
- ORDER BY e.first_name,e.last_name`,end,end,cid,end,start)
- if err!=nil{return model.Detail{},err}
- defer rows.Close()
- for rows.Next(){
-  var employeeID uint64; var employeePublicID,number,first,middle,last,salary,frequency string
-  if err:=rows.Scan(&employeeID,&employeePublicID,&number,&first,&middle,&last,&salary,&frequency);err!=nil{return model.Detail{},err}
-  _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_employees(public_id,payroll_run_id,employee_id,employee_number,first_name,middle_name,last_name,basic_salary,pay_frequency,status)
-  VALUES(?,?,?,?,?,?,?,?,?,'PENDING')`,uuid.NewString(),publicID,employeeID,number,first,nilIf(middle),last,salary,frequency)
-  if err!=nil{return model.Detail{},err}
- }
- if err:=rows.Err();err!=nil{return model.Detail{},err}
- if err:=tx.Commit();err!=nil{return model.Detail{},err}
- return r.Get(ctx,companyPublicID,publicID)
-}
+ ORDER BY e.first_name,e.last_name`, end, end, cid, end, start)
+ if err != nil { return model.Detail{}, err }
 
+ for rows.Next() {
+  var item snapshot
+  if err := rows.Scan(&item.employeeID, &item.number, &item.first, &item.middle, &item.last, &item.salary, &item.frequency); err != nil {
+   rows.Close()
+   return model.Detail{}, err
+  }
+  employees = append(employees, item)
+ }
+ if err := rows.Err(); err != nil {
+  rows.Close()
+  return model.Detail{}, err
+ }
+ if err := rows.Close(); err != nil { return model.Detail{}, err }
+
+ for _, employee := range employees {
+  _, err = tx.ExecContext(ctx, `INSERT INTO payroll_run_employees(public_id,payroll_run_id,employee_id,employee_number,first_name,middle_name,last_name,basic_salary,pay_frequency,status)
+  VALUES(?,?,?,?,?,?,?,?,?,'PENDING')`,
+   uuid.NewString(), runID, employee.employeeID, employee.number, employee.first, nilIf(employee.middle),
+   employee.last, employee.salary, employee.frequency,
+  )
+  if err != nil { return model.Detail{}, err }
+ }
+
+ if err := tx.Commit(); err != nil { return model.Detail{}, err }
+ return r.Get(ctx, companyPublicID, publicID)
+}
 func (r Repository) List(ctx context.Context, companyPublicID string)([]model.PayrollRun,error){
  cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return nil,err}
  rows,err:=r.DB.QueryContext(ctx,`SELECT pr.public_id,pr.period_key,pr.period_start,pr.period_end,pr.status,COUNT(pre.id),pr.created_at,pr.updated_at
