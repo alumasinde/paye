@@ -46,3 +46,20 @@ func writeError(w http.ResponseWriter,r *http.Request,err error){
  }
 }
 func fail(w http.ResponseWriter,r *http.Request,status int,code,message string){response.Fail(w,status,code,message,middleware.ID(r.Context()),nil)}
+
+func (h Handler) Review(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.Review(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}
+func (h Handler) Approve(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.Approve(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}
+func (h Handler) Finalize(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.Finalize(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}
+func (h Handler) Lock(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.Lock(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}

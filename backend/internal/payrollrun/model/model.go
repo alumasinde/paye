@@ -44,6 +44,15 @@ type Detail struct {
 
 type CreateInput struct { Period string `json:"period"` }
 
+type WorkflowAction struct {
+ Action string `json:"action"`
+}
+
+type WorkflowSummary struct {
+ PayrollRun
+ Action string `json:"action"`
+}
+
 type CalculationSummary struct {
  PayrollRun
  Processed int `json:"processed"`

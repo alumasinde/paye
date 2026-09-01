@@ -82,3 +82,20 @@ func parsePeriod(v string)(time.Time,time.Time,error){
  if start.IsZero() || end.Before(start){return time.Time{},time.Time{},fmt.Errorf("invalid period")}
  return start,end,nil
 }
+
+func (s Service) Review(ctx context.Context,companyID,userID,runID string)(model.WorkflowSummary,error){
+ if err:=s.require(ctx,companyID,userID,"payroll.review");err!=nil{return model.WorkflowSummary{},err}
+ return s.Repo.Transition(ctx,companyID,runID,userID,"REVIEW")
+}
+func (s Service) Approve(ctx context.Context,companyID,userID,runID string)(model.WorkflowSummary,error){
+ if err:=s.require(ctx,companyID,userID,"payroll.approve");err!=nil{return model.WorkflowSummary{},err}
+ return s.Repo.Transition(ctx,companyID,runID,userID,"APPROVE")
+}
+func (s Service) Finalize(ctx context.Context,companyID,userID,runID string)(model.WorkflowSummary,error){
+ if err:=s.require(ctx,companyID,userID,"payroll.finalize");err!=nil{return model.WorkflowSummary{},err}
+ return s.Repo.Transition(ctx,companyID,runID,userID,"FINALIZE")
+}
+func (s Service) Lock(ctx context.Context,companyID,userID,runID string)(model.WorkflowSummary,error){
+ if err:=s.require(ctx,companyID,userID,"payroll.finalize");err!=nil{return model.WorkflowSummary{},err}
+ return s.Repo.Transition(ctx,companyID,runID,userID,"LOCK")
+}

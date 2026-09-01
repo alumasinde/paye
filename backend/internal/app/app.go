@@ -160,6 +160,10 @@ func NewFromEnv() (*App, error) {
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.List)))
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Get)))
 	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/calculate", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Calculate)))
+	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/review", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Review)))
+	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/approve", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Approve)))
+	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/finalize", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Finalize)))
+	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/lock", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Lock)))
 
 	mux.HandleFunc("POST /api/v1/admin/auth/login", adminH.Login)
 	mux.HandleFunc("POST /api/v1/admin/auth/refresh", adminH.Refresh)

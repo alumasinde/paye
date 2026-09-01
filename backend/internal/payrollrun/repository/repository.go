@@ -141,3 +141,36 @@ func (r Repository) FinalizeCalculation(ctx context.Context, companyPublicID, ru
 
 func nilIf(v string) any {if strings.TrimSpace(v)==""{return nil};return strings.TrimSpace(v)}
 func mustJSON(v map[string]string) string { b,_:=json.Marshal(v);return string(b) }
+
+func (r Repository) Transition(ctx context.Context, companyPublicID, runPublicID, userPublicID, action string) (model.WorkflowSummary,error) {
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.WorkflowSummary{},err}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.WorkflowSummary{},err};defer tx.Rollback()
+ var runID uint64; var out model.WorkflowSummary
+ err=tx.QueryRowContext(ctx,`SELECT id,public_id,period_key,period_start,period_end,status,created_at,updated_at
+ FROM payroll_runs WHERE company_id=? AND public_id=? FOR UPDATE`,cid,runPublicID).
+ Scan(&runID,&out.PublicID,&out.Period,&out.PeriodStart,&out.PeriodEnd,&out.Status,&out.CreatedAt,&out.UpdatedAt)
+ if errors.Is(err,sql.ErrNoRows){return model.WorkflowSummary{},ErrNotFound};if err!=nil{return model.WorkflowSummary{},err}
+ var userID uint64
+ if err:=tx.QueryRowContext(ctx,`SELECT id FROM users WHERE public_id=? AND status='ACTIVE'`,userPublicID).Scan(&userID);err!=nil{
+  if errors.Is(err,sql.ErrNoRows){return model.WorkflowSummary{},ErrNotFound};return model.WorkflowSummary{},err
+ }
+ expected,next:="",""
+ switch action {
+ case "REVIEW": expected,next="CALCULATED","REVIEW"
+ case "APPROVE": expected,next="REVIEW","APPROVED"
+ case "FINALIZE": expected,next="APPROVED","FINALIZED"
+ case "LOCK": expected,next="FINALIZED","LOCKED"
+ default:return model.WorkflowSummary{},ErrConflict
+ }
+ if out.Status!=expected{return model.WorkflowSummary{},ErrConflict}
+ var q string
+ switch action {
+ case "REVIEW": q=`UPDATE payroll_runs SET status='REVIEW',reviewed_by=?,reviewed_at=UTC_TIMESTAMP() WHERE id=?`
+ case "APPROVE": q=`UPDATE payroll_runs SET status='APPROVED',approved_by=?,approved_at=UTC_TIMESTAMP() WHERE id=?`
+ case "FINALIZE": q=`UPDATE payroll_runs SET status='FINALIZED',finalized_by=?,finalized_at=UTC_TIMESTAMP() WHERE id=?`
+ case "LOCK": q=`UPDATE payroll_runs SET status='LOCKED',locked_by=?,locked_at=UTC_TIMESTAMP() WHERE id=?`
+ }
+ if _,err:=tx.ExecContext(ctx,q,userID,runID);err!=nil{return model.WorkflowSummary{},err}
+ if err:=tx.Commit();err!=nil{return model.WorkflowSummary{},err}
+ out.Status=next;out.Action=action;return out,nil
+}
