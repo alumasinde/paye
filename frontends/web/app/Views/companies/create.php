@@ -13,7 +13,7 @@ $old = $old ?? [];
 
 <?php if ($error): ?><div class="alert error"><?= h($error) ?></div><?php endif; ?>
 
-<form method="post" class="setup-card card" novalidate>
+<form method="post" action="/companies" class="setup-card card" novalidate>
 <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
 <section class="form-section">
     <div><p class="eyebrow">01 · COMPANY IDENTITY</p><h3>Business details</h3></div>
