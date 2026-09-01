@@ -117,6 +117,9 @@ final class PayrollController
             $result = $service->addAdjustment($companyId, $runId, $employeeRunId, [
                 'name' => trim((string)($_POST['name'] ?? '')),
                 'kind' => trim((string)($_POST['kind'] ?? '')),
+                'category' => trim((string)($_POST['category'] ?? 'OTHER')),
+                'payee' => trim((string)($_POST['payee'] ?? '')),
+                'reference_no' => trim((string)($_POST['reference_no'] ?? '')),
                 'amount' => trim((string)($_POST['amount'] ?? '')),
                 'taxable' => isset($_POST['taxable']),
                 'reduces_taxable_income' => isset($_POST['reduces_taxable_income']),
@@ -126,6 +129,9 @@ final class PayrollController
         Session::flash($result['ok'] ? 'success' : 'error', $result['ok'] ? ($operation === 'delete' ? 'Adjustment removed.' : 'Adjustment added to the payroll breakdown.') : $result['message']);
         redirect('/payroll/run?run=' . rawurlencode($runId) . '&company=' . rawurlencode($companyId) . '#adjustments');
     }
+
+    public function bulkInput(): void
+    { verify_csrf(); $companies=$this->companies(); $companyId=$this->selectedCompany($companies); $runId=trim((string)($_POST['run_id']??'')); $result=($companyId!==''&&$runId!=='')?(new PayrollRunService())->addBulkInput($companyId,$runId,['name'=>trim((string)($_POST['name']??'')),'kind'=>trim((string)($_POST['kind']??'')),'category'=>trim((string)($_POST['category']??'')),'payee'=>trim((string)($_POST['payee']??'')),'reference_no'=>trim((string)($_POST['reference_no']??'')),'amount'=>trim((string)($_POST['amount']??'')),'taxable'=>isset($_POST['taxable']),'reduces_taxable_income'=>isset($_POST['reduces_taxable_income'])],auth_access_token()):['ok'=>false,'message'=>'Payroll input request is incomplete.']; Session::flash($result['ok']?'success':'error',$result['ok']?((int)($result['data']['applied']??0)).' employees updated with this payroll input.':$result['message']); redirect('/payroll/run?run='.rawurlencode($runId).'&company='.rawurlencode($companyId).'#inputs'); }
 
     public function refreshEmployees(): void
     {
