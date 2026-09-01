@@ -126,6 +126,17 @@ final class PayrollController
         redirect('/payroll/run?run=' . rawurlencode($runId) . '&company=' . rawurlencode($companyId) . '#adjustments');
     }
 
+    public function refreshEmployees(): void
+    {
+        verify_csrf();
+        $companies=$this->companies(); $companyId=$this->selectedCompany($companies);
+        $runId=trim((string)($_POST['run_id']??''));
+        $result=($companyId!=='' && $runId!=='') ? (new PayrollRunService())->refreshEmployees($companyId,$runId,auth_access_token()) : ['ok'=>false,'message'=>'Payroll refresh request is incomplete.'];
+        $count=$result['ok'] ? count((array)($result['data']['employees']??[])) : 0;
+        Session::flash($result['ok']?'success':'error',$result['ok'] ? 'Employee snapshot refreshed. '.$count.' eligible employee'.($count===1?'':'s').' are now in this payroll.' : $result['message']);
+        redirect('/payroll/run?run='.rawurlencode($runId).'&company='.rawurlencode($companyId));
+    }
+
     public function action(): void
     {
         verify_csrf();
