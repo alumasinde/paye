@@ -107,7 +107,7 @@ func NewFromEnv() (*App, error) {
 	companyH := companyHandler.Handler{Service: companySvc}
 	employeeSvc := employeeService.Service{Repo: employeeRepo.Repository{DB: sqlDB}, CompanyRepo: companyRepo.Repository{DB: sqlDB}}
 	employeeH := employeeHandler.Handler{Service: employeeSvc}
-	payrollRunSvc := payrollRunService.Service{Repo: payrollRunRepo.Repository{DB: sqlDB}, CompanyRepo: companyRepo.Repository{DB: sqlDB}}
+	payrollRunSvc := payrollRunService.Service{Repo: payrollRunRepo.Repository{DB: sqlDB}, CompanyRepo: companyRepo.Repository{DB: sqlDB}, Calculator: payeService}
 	payrollRunH := payrollRunHandler.Handler{Service: payrollRunSvc}
 
 	authSvc := authService.Service{Repo: authRepo.Repository{DB: sqlDB}, Secret: secret, AccessTTL: accessTTL, RefreshTTL: refreshTTL, MaxFailedLogins: maxFailedLogins}
@@ -159,6 +159,7 @@ func NewFromEnv() (*App, error) {
 	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Create)))
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.List)))
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Get)))
+	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/calculate", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Calculate)))
 
 	mux.HandleFunc("POST /api/v1/admin/auth/login", adminH.Login)
 	mux.HandleFunc("POST /api/v1/admin/auth/refresh", adminH.Refresh)
