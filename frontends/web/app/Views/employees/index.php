@@ -3,7 +3,7 @@
 <?php if($loadError): ?><div class="alert error"><?= h($loadError) ?></div><?php endif; ?>
 <section class="page-heading">
   <div><p class="eyebrow">PEOPLE</p><h2>Employees</h2><p class="muted">Add and manage employees separately for each company before preparing payroll.</p></div>
-  <?php if($companies): ?><a class="button link-button" href="/employees/create?company=<?= h($companyId) ?>">Add employee</a><?php endif; ?>
+  <?php if($companies): ?><div class="page-actions"><a class="button secondary link-button" href="/employees/import?company=<?= h($companyId) ?>">Import</a><a class="button secondary link-button" href="/employees/export?company=<?= h($companyId) ?>">Export</a><a class="button link-button" href="/employees/create?company=<?= h($companyId) ?>">Add employee</a></div><?php endif; ?>
 </section>
 <?php if($companies): ?>
 <form method="get" class="selector-card card">
