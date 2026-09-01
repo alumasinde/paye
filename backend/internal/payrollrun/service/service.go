@@ -49,15 +49,37 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
    _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,"employee has an invalid basic salary snapshot")
    continue
   }
-  out,calcErr:=s.Calculator.Calculate(ctx,payrollService.Input{Gross:gross,Date:calculationDate,Custom:[]payrollModel.CustomDeduction{}})
+  customInputs:=make([]payrollModel.CustomDeduction,0,len(employee.Adjustments))
+  customNet:=decimal.Zero
+  for _,adjustment:=range employee.Adjustments {
+   amount,amountErr:=decimal.NewFromString(adjustment.Amount)
+   if amountErr!=nil || !amount.IsPositive() {
+    _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,"employee has an invalid payroll adjustment")
+    continue
+   }
+   switch adjustment.Kind {
+   case "EARNING":
+    gross=gross.Add(amount)
+    if !adjustment.Taxable {
+     customInputs=append(customInputs,payrollModel.CustomDeduction{Name:adjustment.Name,Amount:amount,Type:payrollModel.TaxableIncome})
+    }
+   case "DEDUCTION":
+    deductionType:=payrollModel.NetPay
+    if adjustment.ReducesTaxableIncome { deductionType=payrollModel.TaxableIncome } else { customNet=customNet.Add(amount) }
+    customInputs=append(customInputs,payrollModel.CustomDeduction{Name:adjustment.Name,Amount:amount,Type:deductionType})
+   default:
+    _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,"employee has an unsupported payroll adjustment")
+    continue
+   }
+  }
+  out,calcErr:=s.Calculator.Calculate(ctx,payrollService.Input{Gross:gross,Date:calculationDate,Custom:customInputs})
   if calcErr!=nil {
    _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,safeError(calcErr))
    continue
   }
   statutory:=decimal.Zero
   for _,d:=range out.Statutory { statutory=statutory.Add(d.Amount) }
-  custom:=decimal.Zero
-  for _,d:=range out.Custom { custom=custom.Add(d.Amount) }
+  custom:=customNet
   employee.GrossSalary=out.Gross.StringFixed(2)
   employee.TaxableIncome=out.TaxableIncome.StringFixed(2)
   employee.PAYEBeforeRelief=out.PAYEBeforeRelief.StringFixed(2)
@@ -71,6 +93,31 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
   if err:=s.Repo.SaveCalculation(ctx,companyID,runID,employee.PublicID,employee);err!=nil{return model.CalculationSummary{},err}
  }
  return s.Repo.FinalizeCalculation(ctx,companyID,runID,userID)
+}
+
+func (s Service) AddAdjustment(ctx context.Context,companyID,userID,runID,employeeRunID string,in model.AdjustmentInput)(model.PayrollAdjustment,error){
+ if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return model.PayrollAdjustment{},err}
+ in,err:=validateAdjustment(in);if err!=nil{return model.PayrollAdjustment{},err}
+ return s.Repo.AddAdjustment(ctx,companyID,runID,employeeRunID,in)
+}
+func (s Service) UpdateAdjustment(ctx context.Context,companyID,userID,runID,employeeRunID,adjustmentID string,in model.AdjustmentInput)(model.PayrollAdjustment,error){
+ if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return model.PayrollAdjustment{},err}
+ in,err:=validateAdjustment(in);if err!=nil{return model.PayrollAdjustment{},err}
+ return s.Repo.UpdateAdjustment(ctx,companyID,runID,employeeRunID,adjustmentID,in)
+}
+func (s Service) DeleteAdjustment(ctx context.Context,companyID,userID,runID,employeeRunID,adjustmentID string) error{
+ if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return err}
+ return s.Repo.DeleteAdjustment(ctx,companyID,runID,employeeRunID,adjustmentID)
+}
+func validateAdjustment(in model.AdjustmentInput)(model.AdjustmentInput,error){
+ in.Name=strings.TrimSpace(in.Name)
+ in.Kind=strings.ToUpper(strings.TrimSpace(in.Kind))
+ if in.Name=="" || len(in.Name)>150{return in,errors.New("adjustment name is required")}
+ if in.Kind!="EARNING" && in.Kind!="DEDUCTION"{return in,errors.New("adjustment kind must be EARNING or DEDUCTION")}
+ amount,err:=decimal.NewFromString(strings.TrimSpace(in.Amount));if err!=nil || !amount.IsPositive(){return in,errors.New("adjustment amount must be greater than zero")}
+ in.Amount=amount.StringFixed(2)
+ if in.Kind=="EARNING" {in.ReducesTaxableIncome=false}
+ return in,nil
 }
 
 func safeError(err error) string { v:=strings.TrimSpace(err.Error());if v==""{return "calculation failed"};if len(v)>500{return v[:500]};return v }
