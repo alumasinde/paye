@@ -1,0 +1,1 @@
+<main class="center-page"><section class="auth-card"><p class="eyebrow">404</p><h1>Page not found</h1><p class="muted">The page you requested does not exist.</p><a class="button link-button" href="/">Go home</a></section></main>
