@@ -322,3 +322,27 @@ func (r Repository) Transition(ctx context.Context, companyPublicID, runPublicID
  if err:=tx.Commit();err!=nil{return model.WorkflowSummary{},err}
  out.Status=next;out.Action=action;return out,nil
 }
+
+// RefreshEmployees adds employees who are currently eligible for the payroll period.
+// Existing payroll snapshots are never overwritten.
+func (r Repository) RefreshEmployees(ctx context.Context, companyPublicID, runPublicID string) (model.Detail,error) {
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.Detail{},err}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.Detail{},err};defer tx.Rollback()
+ var runID uint64; var start,end time.Time; var status string
+ err=tx.QueryRowContext(ctx,`SELECT id,period_start,period_end,status FROM payroll_runs WHERE company_id=? AND public_id=? FOR UPDATE`,cid,runPublicID).Scan(&runID,&start,&end,&status)
+ if errors.Is(err,sql.ErrNoRows){return model.Detail{},ErrNotFound};if err!=nil{return model.Detail{},err}
+ if status!="DRAFT" && status!="CALCULATION_FAILED"{return model.Detail{},ErrConflict}
+ rows,err:=tx.QueryContext(ctx,`SELECT e.id,e.employee_number,e.first_name,COALESCE(e.middle_name,''),e.last_name,CAST(s.basic_salary AS CHAR),s.pay_frequency
+ FROM employees e JOIN employee_salary_history s ON s.id=(SELECT es.id FROM employee_salary_history es WHERE es.employee_id=e.id AND es.effective_from<=? AND (es.effective_to IS NULL OR es.effective_to>=?) ORDER BY es.effective_from DESC LIMIT 1)
+ WHERE e.company_id=? AND e.status='ACTIVE' AND e.employment_date<=? AND (e.termination_date IS NULL OR e.termination_date>=?)
+ AND NOT EXISTS (SELECT 1 FROM payroll_run_employees pre WHERE pre.payroll_run_id=? AND pre.employee_id=e.id)
+ ORDER BY e.first_name,e.last_name`,end,end,cid,end,start,runID)
+ if err!=nil{return model.Detail{},err}
+ for rows.Next(){var employeeID uint64;var number,first,middle,last,salary,frequency string
+  if err:=rows.Scan(&employeeID,&number,&first,&middle,&last,&salary,&frequency);err!=nil{rows.Close();return model.Detail{},err}
+  if _,err:=tx.ExecContext(ctx,`INSERT INTO payroll_run_employees(public_id,payroll_run_id,employee_id,employee_number,first_name,middle_name,last_name,basic_salary,pay_frequency,status) VALUES(?,?,?,?,?,?,?,?,?,'PENDING')`,uuid.NewString(),runID,employeeID,number,first,nilIf(middle),last,salary,frequency);err!=nil{rows.Close();return model.Detail{},err}
+ }
+ if err:=rows.Err();err!=nil{rows.Close();return model.Detail{},err};if err:=rows.Close();err!=nil{return model.Detail{},err}
+ if err:=tx.Commit();err!=nil{return model.Detail{},err}
+ return r.Get(ctx,companyPublicID,runPublicID)
+}
