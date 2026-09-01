@@ -89,6 +89,7 @@ final class PayrollController
             'companies' => $companies,
             'companyId' => $companyId,
             'run' => $result['data'],
+            'validation' => (new PayrollRunService())->validate($companyId, $runId, auth_access_token())['data'] ?? [],
         ]);
     }
 
@@ -136,9 +137,6 @@ final class PayrollController
         Session::flash($result['ok']?'success':'error',$result['ok'] ? 'Employee snapshot refreshed. '.$count.' eligible employee'.($count===1?'':'s').' are now in this payroll.' : $result['message']);
         redirect('/payroll/run?run='.rawurlencode($runId).'&company='.rawurlencode($companyId));
     }
-
-    public function validate(): void
-    { verify_csrf(); $companies=$this->companies(); $companyId=$this->selectedCompany($companies); $runId=trim((string)($_POST['run_id']??'')); $result=($companyId!==''&&$runId!=='')?(new PayrollRunService())->validate($companyId,$runId,auth_access_token()):['ok'=>false,'message'=>'Validation request is incomplete.']; Session::flash($result['ok']?'validation':'error',$result['ok']?json_encode($result['data']):$result['message']); redirect('/payroll/run?run='.rawurlencode($runId).'&company='.rawurlencode($companyId).'#validation'); }
 
     public function action(): void
     {
