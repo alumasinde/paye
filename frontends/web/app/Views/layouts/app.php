@@ -16,7 +16,7 @@
             <a class="nav-item <?= ($activeNav ?? '') === 'dashboard' ? 'active' : '' ?>" href="/dashboard">Dashboard</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'companies' ? 'active' : '' ?>" href="/companies">Companies</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'employees' ? 'active' : '' ?>" href="/employees">Employees</a>
-            <span class="nav-item disabled">Payroll</span>
+            <a class="nav-item <?= ($activeNav ?? '') === 'payroll' ? 'active' : '' ?>" href="/payroll">Payroll</a>
             <span class="nav-item disabled">Reports</span>
         </nav>
         <div class="sidebar-note">Build your workspace one step at a time. Companies can have their own employees and payroll runs.</div>
