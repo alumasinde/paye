@@ -33,6 +33,9 @@ foreach($workflow as $event){
     if($to!=='') $historyByStatus[$to]=$event;
 }
 $statusClass='status-'.strtolower($status);
+$editable=$status==='DRAFT' || $status==='CALCULATION_FAILED';
+$calculated=0;$failed=0;$pending=0;$grossTotal=0.0;$netTotal=0.0;
+foreach($employees as $employee){$es=(string)($employee['status']??'PENDING'); if($es==='CALCULATED'){$calculated++;$grossTotal+=(float)($employee['gross_salary']??0);$netTotal+=(float)($employee['net_salary']??0);} elseif($es==='FAILED'){$failed++;} else {$pending++;}}
 ?>
 <?php if($success): ?><div class="alert success"><?= h($success) ?></div><?php endif; ?>
 <?php if($error): ?><div class="alert error"><?= h($error) ?></div><?php endif; ?>
@@ -45,6 +48,22 @@ $statusClass='status-'.strtolower($status);
         <p class="muted"><?= count($employees) ?> employee<?= count($employees)===1?'':'s' ?> captured in this payroll run.</p>
     </div>
     <span class="status <?= h($statusClass) ?>"><?= h($status) ?></span>
+</section>
+
+<section class="card payroll-run-summary">
+    <div class="section-heading"><div><p class="eyebrow">PAYROLL WORKSPACE</p><h2>At a glance</h2><p class="muted">Use the summary to identify what needs attention before moving this payroll forward.</p></div></div>
+    <div class="stats-grid">
+        <div class="stat-card"><span class="muted">Employees</span><strong><?= count($employees) ?></strong><small><?= $calculated ?> calculated</small></div>
+        <div class="stat-card"><span class="muted">Pending</span><strong><?= $pending ?></strong><small><?= $failed ?> need attention</small></div>
+        <div class="stat-card"><span class="muted">Gross pay</span><strong>KES <?= h(number_format($grossTotal,2)) ?></strong><small>Calculated employees</small></div>
+        <div class="stat-card"><span class="muted">Net pay</span><strong>KES <?= h(number_format($netTotal,2)) ?></strong><small>Calculated employees</small></div>
+    </div>
+    <?php if($editable): ?>
+    <div class="workflow-action">
+        <div><h3>Employee snapshot</h3><p class="muted">Refresh this draft after correcting employment dates or salary effective dates. Existing employee snapshots and adjustments are preserved.</p></div>
+        <form method="post" action="/payroll/refresh-employees"><input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>"><input type="hidden" name="company_id" value="<?= h($companyId) ?>"><input type="hidden" name="run_id" value="<?= h((string)($run['id']??'')) ?>"><button class="button secondary" type="submit">Refresh employees</button></form>
+    </div>
+    <?php endif; ?>
 </section>
 
 <section class="workflow card">
@@ -202,10 +221,8 @@ $statusClass='status-'.strtolower($status);
 
 <section class="table-card card">
     <div class="section-heading">
-        <div>
-            <h2>Employee payroll</h2>
-            <p class="muted">Gross pay, deductions and net pay are stored against this payroll snapshot.</p>
-        </div>
+        <div><p class="eyebrow">EMPLOYEES</p><h2>Employee payroll</h2><p class="muted">Search and filter the payroll population without losing the historical payroll snapshot.</p></div>
+        <div class="selectors"><label>Search<input id="payrollEmployeeSearch" placeholder="Search name or employee number"></label><label>Status<select id="payrollEmployeeStatus"><option value="">All statuses</option><option value="PENDING">Pending</option><option value="CALCULATED">Calculated</option><option value="FAILED">Needs attention</option></select></label></div>
     </div>
     <div class="table-wrap">
         <table>
@@ -225,7 +242,7 @@ $statusClass='status-'.strtolower($status);
                     $name=trim((string)($employee['first_name']??'').' '.(string)($employee['middle_name']??'').' '.(string)($employee['last_name']??''));
                     $employeeStatus=(string)($employee['status']??'PENDING');
                 ?>
-                    <tr>
+                    <tr class="payroll-employee-row" data-status="<?= h($employeeStatus) ?>" data-search="<?= h(strtolower($name.' '.(string)($employee['employee_number']??''))) ?>">
                         <td>
                             <strong><?= h($name) ?></strong>
                             <span class="muted"><?= h((string)($employee['employee_number']??'')) ?></span>
@@ -246,3 +263,6 @@ $statusClass='status-'.strtolower($status);
         </table>
     </div>
 </section>
+<script>
+(()=>{const search=document.getElementById('payrollEmployeeSearch'),status=document.getElementById('payrollEmployeeStatus');if(!search||!status)return;const apply=()=>{const q=search.value.toLowerCase().trim(),s=status.value;document.querySelectorAll('.payroll-employee-row').forEach(row=>{row.hidden=(q&&!row.dataset.search.includes(q))||(s&&row.dataset.status!==s);});};search.addEventListener('input',apply);status.addEventListener('change',apply);})();
+</script>
