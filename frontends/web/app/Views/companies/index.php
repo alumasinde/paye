@@ -33,7 +33,7 @@ $error = Session::flash('error');
             <div><dt>Currency</dt><dd><?= h((string)($company['currency_code'] ?? 'KES')) ?></dd></div>
         </dl>
         <div class="company-card-footer">
-            <span class="muted">Employee and payroll tools are next.</span>
+            <a class="text-link" href="/employees?company=<?= h((string)($company['id'] ?? '')) ?>">Manage employees →</a>
         </div>
     </article>
 <?php endforeach; ?>
