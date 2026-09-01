@@ -243,6 +243,63 @@ final class EmployeeController
         redirect('/employees?company=' . rawurlencode($companyId));
     }
 
+    public function show(): void
+    {
+        $companyId = trim((string)($_GET['company'] ?? ''));
+        $employeeId = trim((string)($_GET['employee'] ?? ''));
+        if ($companyId === '' || $employeeId === '') redirect('/employees');
+        $service = new EmployeeService();
+        $employeeResult = $service->get($companyId, $employeeId, auth_access_token());
+        if (!$employeeResult['ok']) { Session::flash('error',$employeeResult['message']); redirect('/employees?company=' . rawurlencode($companyId)); }
+        $historyResult = $service->salaryHistory($companyId, $employeeId, auth_access_token());
+        view('employees/show', [
+            'title'=>'Employee profile','layout'=>'app','activeNav'=>'employees','user'=>auth_user(),
+            'companyId'=>$companyId,'employee'=>(array)$employeeResult['data'],
+            'salaryHistory'=>$historyResult['ok']?(array)$historyResult['salary_history']:[],
+            'historyError'=>$historyResult['ok']?'':$historyResult['message'],
+        ]);
+    }
+
+    public function showEdit(): void
+    {
+        $companyId = trim((string)($_GET['company'] ?? ''));
+        $employeeId = trim((string)($_GET['employee'] ?? ''));
+        if ($companyId === '' || $employeeId === '') redirect('/employees');
+        $result = (new EmployeeService())->get($companyId, $employeeId, auth_access_token());
+        if (!$result['ok']) { Session::flash('error',$result['message']); redirect('/employees?company=' . rawurlencode($companyId)); }
+        $old = Session::flash('old');
+        view('employees/edit', [
+            'title'=>'Edit employee','layout'=>'app','activeNav'=>'employees','user'=>auth_user(),
+            'companyId'=>$companyId,'employeeId'=>$employeeId,'employee'=>(array)$result['data'],
+            'departments'=>$this->departments($companyId),'old'=>is_array($old)?$old:[],
+        ]);
+    }
+
+    public function update(): void
+    {
+        verify_csrf();
+        $companyId=trim((string)($_POST['company_id']??''));
+        $employeeId=trim((string)($_POST['employee_id']??''));
+        if ($companyId===''||$employeeId==='') redirect('/employees');
+        $input=$_POST;
+        foreach(['first_name','last_name','employment_date','status'] as $key) if(trim((string)($input[$key]??''))===''){Session::flash('error','Complete the required employee details.');Session::flash('old',$input);redirect('/employees/edit?company='.rawurlencode($companyId).'&employee='.rawurlencode($employeeId));}
+        $result=(new EmployeeService())->update($companyId,$employeeId,$input,auth_access_token());
+        if(!$result['ok']){Session::flash('error',$result['message']);Session::flash('old',$input);redirect('/employees/edit?company='.rawurlencode($companyId).'&employee='.rawurlencode($employeeId));}
+        Session::flash('success','Employee profile updated.');
+        redirect('/employees/show?company='.rawurlencode($companyId).'&employee='.rawurlencode($employeeId));
+    }
+
+    public function addSalary(): void
+    {
+        verify_csrf();
+        $companyId=trim((string)($_POST['company_id']??''));
+        $employeeId=trim((string)($_POST['employee_id']??''));
+        if($companyId===''||$employeeId==='') redirect('/employees');
+        $result=(new EmployeeService())->addSalary($companyId,$employeeId,$_POST,auth_access_token());
+        if(!$result['ok']) Session::flash('error',$result['message']); else Session::flash('success','Salary change added to the employee history.');
+        redirect('/employees/show?company='.rawurlencode($companyId).'&employee='.rawurlencode($employeeId));
+    }
+
     private static function validDate(string $value): bool
     {
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
