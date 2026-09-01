@@ -51,6 +51,8 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
   }
   customInputs:=make([]payrollModel.CustomDeduction,0,len(employee.Adjustments))
   customNet:=decimal.Zero
+  taxableDeductions:=decimal.Zero
+  nonTaxableEarnings:=decimal.Zero
   invalidAdjustment:=false
   for _,adjustment:=range employee.Adjustments {
    amount,amountErr:=decimal.NewFromString(adjustment.Amount)
@@ -63,11 +65,12 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
    case "EARNING":
     gross=gross.Add(amount)
     if !adjustment.Taxable {
+     nonTaxableEarnings=nonTaxableEarnings.Add(amount)
      customInputs=append(customInputs,payrollModel.CustomDeduction{Name:adjustment.Name,Amount:amount,Type:payrollModel.TaxableIncome})
     }
    case "DEDUCTION":
     deductionType:=payrollModel.NetPay
-    if adjustment.ReducesTaxableIncome { deductionType=payrollModel.TaxableIncome } else { customNet=customNet.Add(amount) }
+    if adjustment.ReducesTaxableIncome { deductionType=payrollModel.TaxableIncome; taxableDeductions=taxableDeductions.Add(amount) } else { customNet=customNet.Add(amount) }
     customInputs=append(customInputs,payrollModel.CustomDeduction{Name:adjustment.Name,Amount:amount,Type:deductionType})
    default:
     _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,"employee has an unsupported payroll adjustment")
@@ -81,9 +84,13 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
    _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,safeError(calcErr))
    continue
   }
+  if !nonTaxableEarnings.IsZero() {
+   out.TotalDeductions=out.TotalDeductions.Sub(nonTaxableEarnings)
+   out.Net=out.Net.Add(nonTaxableEarnings)
+  }
   statutory:=decimal.Zero
   for _,d:=range out.Statutory { statutory=statutory.Add(d.Amount) }
-  custom:=customNet
+  custom:=customNet.Add(taxableDeductions)
   employee.GrossSalary=out.Gross.StringFixed(2)
   employee.TaxableIncome=out.TaxableIncome.StringFixed(2)
   employee.PAYEBeforeRelief=out.PAYEBeforeRelief.StringFixed(2)
