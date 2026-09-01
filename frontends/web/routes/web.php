@@ -9,3 +9,7 @@ $app->router->get('/dashboard', [DashboardController::class, 'index'], ['require
 $app->router->get('/companies', [CompanyController::class, 'index'], ['require_auth']);
 $app->router->get('/companies/create', [CompanyController::class, 'showCreate'], ['require_auth']);
 $app->router->post('/companies', [CompanyController::class, 'create'], ['require_auth']);
+
+$app->router->get('/employees', [EmployeeController::class, 'index'], ['require_auth']);
+$app->router->get('/employees/create', [EmployeeController::class, 'showCreate'], ['require_auth']);
+$app->router->post('/employees', [EmployeeController::class, 'create'], ['require_auth']);
