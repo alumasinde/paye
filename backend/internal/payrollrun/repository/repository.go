@@ -149,7 +149,7 @@ func (r Repository) Get(ctx context.Context, companyPublicID, runPublicID string
 
 func (r Repository) Pending(ctx context.Context, companyPublicID, runPublicID string)(model.PayrollRun,[]model.PayrollRunEmployee,error){
  d,err:=r.Get(ctx,companyPublicID,runPublicID);if err!=nil{return model.PayrollRun{},nil,err}
- if d.Status!="DRAFT" && d.Status!="CALCULATED" {return model.PayrollRun{},nil,ErrConflict}
+ if d.Status!="DRAFT" && d.Status!="CALCULATION_FAILED" {return model.PayrollRun{},nil,ErrConflict}
  pending:=make([]model.PayrollRunEmployee,0)
  for _,e:=range d.Employees {if e.Status=="PENDING" || e.Status=="FAILED" {pending=append(pending,e)}}
  return d.PayrollRun,pending,nil
@@ -173,18 +173,37 @@ func (r Repository) SaveFailure(ctx context.Context, companyPublicID, runPublicI
  return err
 }
 
-func (r Repository) FinalizeCalculation(ctx context.Context, companyPublicID, runPublicID string) (model.CalculationSummary,error) {
+func (r Repository) FinalizeCalculation(ctx context.Context, companyPublicID, runPublicID, userPublicID string) (model.CalculationSummary,error) {
  cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.CalculationSummary{},err}
- var id uint64; var out model.CalculationSummary
- err=r.DB.QueryRowContext(ctx,`SELECT id,public_id,period_key,period_start,period_end,status,created_at,updated_at FROM payroll_runs WHERE company_id=? AND public_id=?`,cid,runPublicID).Scan(&id,&out.PublicID,&out.Period,&out.PeriodStart,&out.PeriodEnd,&out.Status,&out.CreatedAt,&out.UpdatedAt)
- if errors.Is(err,sql.ErrNoRows){return model.CalculationSummary{},ErrNotFound};if err!=nil{return model.CalculationSummary{},err}
- rows,err:=r.DB.QueryContext(ctx,`SELECT status,COUNT(*) FROM payroll_run_employees WHERE payroll_run_id=? GROUP BY status`,id);if err!=nil{return model.CalculationSummary{},err};defer rows.Close()
- for rows.Next(){var status string;var n int;if err:=rows.Scan(&status,&n);err!=nil{return model.CalculationSummary{},err};switch status{case "CALCULATED":out.Processed=n;case "FAILED":out.Failed=n;default:out.Pending+=n}}
- status:="CALCULATED";if out.Failed>0 || out.Pending>0 {status="CALCULATION_FAILED"}
- if _,err=r.DB.ExecContext(ctx,`UPDATE payroll_runs SET status=? WHERE id=?`,status,id);err!=nil{return model.CalculationSummary{},err}
- out.Status=status;return out,nil
-}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.CalculationSummary{},err};defer tx.Rollback()
 
+ var id uint64; var out model.CalculationSummary
+ err=tx.QueryRowContext(ctx,`SELECT id,public_id,period_key,period_start,period_end,status,created_at,updated_at FROM payroll_runs WHERE company_id=? AND public_id=? FOR UPDATE`,cid,runPublicID).
+  Scan(&id,&out.PublicID,&out.Period,&out.PeriodStart,&out.PeriodEnd,&out.Status,&out.CreatedAt,&out.UpdatedAt)
+ if errors.Is(err,sql.ErrNoRows){return model.CalculationSummary{},ErrNotFound};if err!=nil{return model.CalculationSummary{},err}
+
+ rows,err:=tx.QueryContext(ctx,`SELECT status,COUNT(*) FROM payroll_run_employees WHERE payroll_run_id=? GROUP BY status`,id);if err!=nil{return model.CalculationSummary{},err}
+ for rows.Next(){var status string;var n int;if err:=rows.Scan(&status,&n);err!=nil{rows.Close();return model.CalculationSummary{},err};switch status{case "CALCULATED":out.Processed=n;case "FAILED":out.Failed=n;default:out.Pending+=n}}
+ if err:=rows.Err();err!=nil{rows.Close();return model.CalculationSummary{},err}
+ if err:=rows.Close();err!=nil{return model.CalculationSummary{},err}
+
+ next:="CALCULATED";if out.Failed>0 || out.Pending>0 {next="CALCULATION_FAILED"}
+ if _,err=tx.ExecContext(ctx,`UPDATE payroll_runs SET status=? WHERE id=?`,next,id);err!=nil{return model.CalculationSummary{},err}
+
+ if next=="CALCULATED" {
+  var userID uint64
+  if err:=tx.QueryRowContext(ctx,`SELECT id FROM users WHERE public_id=? AND status='ACTIVE'`,userPublicID).Scan(&userID);err!=nil{
+   if errors.Is(err,sql.ErrNoRows){return model.CalculationSummary{},ErrNotFound};return model.CalculationSummary{},err
+  }
+  if _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_workflow_events
+   (payroll_run_id,actor_user_id,action,from_status,to_status)
+   VALUES(?,?,?,?,?)`,id,userID,"CALCULATE",out.Status,next);err!=nil{return model.CalculationSummary{},err}
+ }
+
+ if err:=tx.Commit();err!=nil{return model.CalculationSummary{},err}
+ out.Status=next
+ return out,nil
+}
 func nilIf(v string) any {if strings.TrimSpace(v)==""{return nil};return strings.TrimSpace(v)}
 func mustJSON(v map[string]string) string { b,_:=json.Marshal(v);return string(b) }
 
