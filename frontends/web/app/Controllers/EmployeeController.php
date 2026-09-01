@@ -12,7 +12,8 @@ final class EmployeeController
     public function showCreate(): void {
         $companies=$this->companies(); $companyId=trim((string)($_GET['company']??''));
         $old=Session::flash('old');
-        view('employees/create',['title'=>'Add employee','layout'=>'app','activeNav'=>'employees','user'=>auth_user(),'companies'=>$companies,'companyId'=>$companyId,'old'=>is_array($old)?$old:[]]);
+        $departmentResult=$companyId!=='' ? (new DepartmentService())->list($companyId,auth_access_token()) : ['ok'=>true,'departments'=>[]];
+        view('employees/create',['title'=>'Add employee','layout'=>'app','activeNav'=>'employees','user'=>auth_user(),'companies'=>$companies,'companyId'=>$companyId,'departments'=>$departmentResult['ok']?$departmentResult['departments']:[],'old'=>is_array($old)?$old:[]]);
     }
     public function create(): void {
         verify_csrf(); $companyId=trim((string)($_POST['company_id']??'')); $input=$_POST; Session::flash('old',$input);
