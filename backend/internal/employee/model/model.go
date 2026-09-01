@@ -21,6 +21,7 @@ type Employee struct {
 	TerminationDate *time.Time `json:"termination_date,omitempty"`
 	JobTitle string `json:"job_title,omitempty"`
 	DepartmentID string `json:"department_id,omitempty"`
+	DepartmentCode string `json:"department_code,omitempty"`
 	Department string `json:"department,omitempty"`
 	EmploymentType string `json:"employment_type,omitempty"`
 	Status string `json:"status"`
