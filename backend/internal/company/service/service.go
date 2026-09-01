@@ -10,7 +10,34 @@ import (
 	repo "github.com/alumasinde/budget254-paye-api/internal/company/repository"
 )
 
-var codePattern = regexp.MustCompile(`^[A-Z0-9_-]+$`)
+var (
+	codePattern = regexp.MustCompile(`^[A-Z0-9_-]+package service
+
+import (
+	"context"
+	"errors"
+	"regexp"
+	"strings"
+
+	"github.com/alumasinde/budget254-paye-api/internal/company/model"
+	repo "github.com/alumasinde/budget254-paye-api/internal/company/repository"
+)
+
+)
+	colorPattern = regexp.MustCompile(`^#[0-9A-F]{6}package service
+
+import (
+	"context"
+	"errors"
+	"regexp"
+	"strings"
+
+	"github.com/alumasinde/budget254-paye-api/internal/company/model"
+	repo "github.com/alumasinde/budget254-paye-api/internal/company/repository"
+)
+
+)
+)
 
 type Service struct{ Repo repo.Repository }
 
@@ -117,6 +144,8 @@ func normalizeCreate(in model.CreateCompanyInput) model.CreateCompanyInput {
 	in.CountryCode = strings.ToUpper(strings.TrimSpace(in.CountryCode))
 	in.CurrencyCode = strings.ToUpper(strings.TrimSpace(in.CurrencyCode))
 	in.PayrollFrequency = strings.ToUpper(strings.TrimSpace(in.PayrollFrequency))
+	in.PrimaryColor = normalizeColor(in.PrimaryColor, "#15803D")
+	in.SecondaryColor = normalizeColor(in.SecondaryColor, "#166534")
 	return in
 }
 
@@ -128,6 +157,8 @@ func normalizeUpdate(in model.UpdateCompanyInput) model.UpdateCompanyInput {
 	in.CountryCode = strings.ToUpper(strings.TrimSpace(in.CountryCode))
 	in.CurrencyCode = strings.ToUpper(strings.TrimSpace(in.CurrencyCode))
 	in.PayrollFrequency = strings.ToUpper(strings.TrimSpace(in.PayrollFrequency))
+	in.PrimaryColor = normalizeColor(in.PrimaryColor, "#15803D")
+	in.SecondaryColor = normalizeColor(in.SecondaryColor, "#166534")
 	return in
 }
 
@@ -135,14 +166,16 @@ func validateCreate(in model.CreateCompanyInput) error {
 	if in.LegalName == "" || in.KRAPIN == "" || in.Email == "" {
 		return errors.New("legal_name, kra_pin and email are required")
 	}
-	return validateShared(in.CountryCode, in.CurrencyCode, in.PayrollFrequency)
+	if err := validateShared(in.CountryCode, in.CurrencyCode, in.PayrollFrequency); err != nil { return err }
+	return validateColors(in.PrimaryColor, in.SecondaryColor)
 }
 
 func validateUpdate(in model.UpdateCompanyInput) error {
 	if in.LegalName == "" || in.Email == "" {
 		return errors.New("legal_name and email are required")
 	}
-	return validateShared(in.CountryCode, in.CurrencyCode, in.PayrollFrequency)
+	if err := validateShared(in.CountryCode, in.CurrencyCode, in.PayrollFrequency); err != nil { return err }
+	return validateColors(in.PrimaryColor, in.SecondaryColor)
 }
 
 func validateShared(country, currency, frequency string) error {
@@ -154,6 +187,21 @@ func validateShared(country, currency, frequency string) error {
 	}
 	if frequency == "" || len(frequency) > 30 || !codePattern.MatchString(frequency) {
 		return errors.New("payroll_frequency must be a valid code")
+	}
+	return nil
+}
+
+
+func normalizeColor(value, fallback string) string {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	if value == "" { return fallback }
+	if !strings.HasPrefix(value, "#") { value = "#" + value }
+	return value
+}
+
+func validateColors(primary, secondary string) error {
+	if !colorPattern.MatchString(primary) || !colorPattern.MatchString(secondary) {
+		return errors.New("primary_color and secondary_color must be valid hex colors")
 	}
 	return nil
 }
