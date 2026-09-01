@@ -96,6 +96,6 @@ func (s Service) Finalize(ctx context.Context,companyID,userID,runID string)(mod
  return s.Repo.Transition(ctx,companyID,runID,userID,"FINALIZE")
 }
 func (s Service) Lock(ctx context.Context,companyID,userID,runID string)(model.WorkflowSummary,error){
- if err:=s.require(ctx,companyID,userID,"payroll.finalize");err!=nil{return model.WorkflowSummary{},err}
+ if err:=s.require(ctx,companyID,userID,"payroll.lock");err!=nil{return model.WorkflowSummary{},err}
  return s.Repo.Transition(ctx,companyID,runID,userID,"LOCK")
 }
