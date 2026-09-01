@@ -31,3 +31,9 @@ cd frontends/admin
 cp .env.example .env
 npm install
 npm run dev
+
+# Web Frontend
+C:\xampp\htdocs\paye\frontends\web>
+$env:PAYROLL_API_BASE_URL="http://192.168.100.11:8080/api/v1"
+
+php -S 0.0.0.0:8088
