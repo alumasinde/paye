@@ -90,3 +90,5 @@ func (h Handler) RefreshEmployees(w http.ResponseWriter,r *http.Request){
 
 func (h Handler) Reopen(w http.ResponseWriter,r *http.Request){out,err:=h.Service.Reopen(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"));if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)}
 func (h Handler) Validate(w http.ResponseWriter,r *http.Request){out,err:=h.Service.Validate(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"));if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)}
+
+func (h Handler) AddBulkInput(w http.ResponseWriter,r *http.Request){var in model.BulkInput;d:=json.NewDecoder(http.MaxBytesReader(w,r.Body,1<<20));d.DisallowUnknownFields();if err:=d.Decode(&in);err!=nil{fail(w,r,http.StatusBadRequest,"INVALID_REQUEST","invalid payroll input request");return};out,err:=h.Service.AddBulkInput(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"),in);if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusCreated,out)}
