@@ -4,6 +4,7 @@ import (
  "context"
  "database/sql"
  "errors"
+ "encoding/json"
  "strings"
  "time"
 
@@ -77,11 +78,66 @@ func (r Repository) Get(ctx context.Context, companyPublicID, runPublicID string
  var id uint64; var d model.Detail
  err=r.DB.QueryRowContext(ctx,`SELECT id,public_id,period_key,period_start,period_end,status,created_at,updated_at FROM payroll_runs WHERE company_id=? AND public_id=?`,cid,runPublicID).Scan(&id,&d.PublicID,&d.Period,&d.PeriodStart,&d.PeriodEnd,&d.Status,&d.CreatedAt,&d.UpdatedAt)
  if errors.Is(err,sql.ErrNoRows){return model.Detail{},ErrNotFound};if err!=nil{return model.Detail{},err}
- rows,err:=r.DB.QueryContext(ctx,`SELECT pre.public_id,e.public_id,pre.employee_number,pre.first_name,COALESCE(pre.middle_name,''),pre.last_name,CAST(pre.basic_salary AS CHAR),pre.pay_frequency,pre.status
+ rows,err:=r.DB.QueryContext(ctx,`SELECT pre.public_id,e.public_id,pre.employee_number,pre.first_name,COALESCE(pre.middle_name,''),pre.last_name,
+ CAST(pre.basic_salary AS CHAR),pre.pay_frequency,pre.status,
+ COALESCE(CAST(pre.gross_salary AS CHAR),''),COALESCE(CAST(pre.taxable_income AS CHAR),''),
+ COALESCE(CAST(pre.paye_before_relief AS CHAR),''),COALESCE(CAST(pre.relief AS CHAR),''),
+ COALESCE(CAST(pre.paye AS CHAR),''),COALESCE(CAST(pre.statutory_deductions AS CHAR),''),
+ COALESCE(CAST(pre.custom_deductions AS CHAR),''),COALESCE(CAST(pre.total_deductions AS CHAR),''),
+ COALESCE(CAST(pre.net_salary AS CHAR),''),pre.rule_versions,pre.calculated_at,COALESCE(pre.error_message,'')
  FROM payroll_run_employees pre JOIN employees e ON e.id=pre.employee_id WHERE pre.payroll_run_id=? ORDER BY pre.first_name,pre.last_name`,id)
  if err!=nil{return model.Detail{},err};defer rows.Close()
- for rows.Next(){var e model.PayrollRunEmployee;if err:=rows.Scan(&e.PublicID,&e.EmployeeID,&e.EmployeeNumber,&e.FirstName,&e.MiddleName,&e.LastName,&e.BasicSalary,&e.PayFrequency,&e.Status);err!=nil{return model.Detail{},err};d.Employees=append(d.Employees,e)}
+ for rows.Next(){
+  var e model.PayrollRunEmployee; var rules sql.NullString; var calculated sql.NullTime
+  if err:=rows.Scan(&e.PublicID,&e.EmployeeID,&e.EmployeeNumber,&e.FirstName,&e.MiddleName,&e.LastName,&e.BasicSalary,&e.PayFrequency,&e.Status,
+   &e.GrossSalary,&e.TaxableIncome,&e.PAYEBeforeRelief,&e.Relief,&e.PAYE,&e.StatutoryDeductions,&e.CustomDeductions,&e.TotalDeductions,&e.NetSalary,&rules,&calculated,&e.ErrorMessage);err!=nil{return model.Detail{},err}
+  if calculated.Valid { t:=calculated.Time; e.CalculatedAt=&t }
+  if rules.Valid && strings.TrimSpace(rules.String)!="" {
+   e.RuleVersions=map[string]string{}
+   _=json.Unmarshal([]byte(rules.String),&e.RuleVersions)
+  }
+  d.Employees=append(d.Employees,e)
+ }
  if err:=rows.Err();err!=nil{return model.Detail{},err};d.EmployeeCount=len(d.Employees);return d,nil
 }
 
+func (r Repository) Pending(ctx context.Context, companyPublicID, runPublicID string)(model.PayrollRun,[]model.PayrollRunEmployee,error){
+ d,err:=r.Get(ctx,companyPublicID,runPublicID);if err!=nil{return model.PayrollRun{},nil,err}
+ if d.Status!="DRAFT" && d.Status!="CALCULATED" {return model.PayrollRun{},nil,ErrConflict}
+ pending:=make([]model.PayrollRunEmployee,0)
+ for _,e:=range d.Employees {if e.Status=="PENDING" || e.Status=="FAILED" {pending=append(pending,e)}}
+ return d.PayrollRun,pending,nil
+}
+
+func (r Repository) SaveCalculation(ctx context.Context, companyPublicID, runPublicID, employeeRunID string, values model.PayrollRunEmployee) error {
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return err}
+ _,err=r.DB.ExecContext(ctx,`UPDATE payroll_run_employees pre
+ JOIN payroll_runs pr ON pr.id=pre.payroll_run_id
+ SET pre.status='CALCULATED',pre.gross_salary=?,pre.taxable_income=?,pre.paye_before_relief=?,pre.relief=?,pre.paye=?,
+ pre.statutory_deductions=?,pre.custom_deductions=?,pre.total_deductions=?,pre.net_salary=?,pre.rule_versions=?,pre.calculated_at=UTC_TIMESTAMP(),pre.error_message=NULL
+ WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=?`,
+ values.GrossSalary,values.TaxableIncome,values.PAYEBeforeRelief,values.Relief,values.PAYE,values.StatutoryDeductions,values.CustomDeductions,values.TotalDeductions,values.NetSalary,mustJSON(values.RuleVersions),cid,runPublicID,employeeRunID)
+ return err
+}
+
+func (r Repository) SaveFailure(ctx context.Context, companyPublicID, runPublicID, employeeRunID,message string) error {
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return err}
+ _,err=r.DB.ExecContext(ctx,`UPDATE payroll_run_employees pre JOIN payroll_runs pr ON pr.id=pre.payroll_run_id
+ SET pre.status='FAILED',pre.error_message=? WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=?`,message,cid,runPublicID,employeeRunID)
+ return err
+}
+
+func (r Repository) FinalizeCalculation(ctx context.Context, companyPublicID, runPublicID string) (model.CalculationSummary,error) {
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.CalculationSummary{},err}
+ var id uint64; var out model.CalculationSummary
+ err=r.DB.QueryRowContext(ctx,`SELECT id,public_id,period_key,period_start,period_end,status,created_at,updated_at FROM payroll_runs WHERE company_id=? AND public_id=?`,cid,runPublicID).Scan(&id,&out.PublicID,&out.Period,&out.PeriodStart,&out.PeriodEnd,&out.Status,&out.CreatedAt,&out.UpdatedAt)
+ if errors.Is(err,sql.ErrNoRows){return model.CalculationSummary{},ErrNotFound};if err!=nil{return model.CalculationSummary{},err}
+ rows,err:=r.DB.QueryContext(ctx,`SELECT status,COUNT(*) FROM payroll_run_employees WHERE payroll_run_id=? GROUP BY status`,id);if err!=nil{return model.CalculationSummary{},err};defer rows.Close()
+ for rows.Next(){var status string;var n int;if err:=rows.Scan(&status,&n);err!=nil{return model.CalculationSummary{},err};switch status{case "CALCULATED":out.Processed=n;case "FAILED":out.Failed=n;default:out.Pending+=n}}
+ status:="CALCULATED";if out.Failed>0 || out.Pending>0 {status="CALCULATION_FAILED"}
+ if _,err=r.DB.ExecContext(ctx,`UPDATE payroll_runs SET status=? WHERE id=?`,status,id);err!=nil{return model.CalculationSummary{},err}
+ out.Status=status;return out,nil
+}
+
 func nilIf(v string) any {if strings.TrimSpace(v)==""{return nil};return strings.TrimSpace(v)}
+func mustJSON(v map[string]string) string { b,_:=json.Marshal(v);return string(b) }
