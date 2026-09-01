@@ -103,6 +103,99 @@ $statusClass='status-'.strtolower($status);
     </div>
 </section>
 
+<section id="adjustments" class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">PAYROLL BREAKDOWN</p>
+            <h2>Earnings & adjustments</h2>
+            <p class="muted">Add one-off earnings or deductions to this payroll run. Changes are stored with this payroll snapshot and are not written back to the employee's salary history.</p>
+        </div>
+        <?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?>
+            <span class="status small status-draft">Editable</span>
+        <?php else: ?>
+            <span class="status small"><?= h($status) ?></span>
+        <?php endif; ?>
+    </div>
+
+    <?php foreach($employees as $employee):
+        $employeeName=trim((string)($employee['first_name']??'').' '.(string)($employee['middle_name']??'').' '.(string)($employee['last_name']??''));
+        $adjustments=(array)($employee['adjustments']??[]);
+        $earnings=0.0; $deductions=0.0;
+        foreach($adjustments as $adjustment){
+            if(($adjustment['kind']??'')==='EARNING') $earnings+=(float)($adjustment['amount']??0);
+            if(($adjustment['kind']??'')==='DEDUCTION') $deductions+=(float)($adjustment['amount']??0);
+        }
+    ?>
+        <details class="card" <?= count($employees)===1?'open':'' ?>>
+            <summary>
+                <strong><?= h($employeeName) ?></strong>
+                <span class="muted"><?= h((string)($employee['employee_number']??'')) ?> · Earnings <?= h(number_format($earnings,2)) ?> · Deductions <?= h(number_format($deductions,2)) ?></span>
+            </summary>
+            <div class="section-heading">
+                <div>
+                    <h3>Current breakdown</h3>
+                    <p class="muted">Basic salary is the payroll snapshot. Adjustments below apply only to this payroll period.</p>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Item</th><th>Type</th><th>Tax treatment</th><th>Amount</th><?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?><th></th><?php endif; ?></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Basic salary</strong></td><td>BASE</td><td>Taxable</td><td><?= h(number_format((float)($employee['basic_salary']??0),2)) ?></td><?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?><td></td><?php endif; ?></tr>
+                        <?php foreach($adjustments as $adjustment):
+                            $kind=(string)($adjustment['kind']??'');
+                            $treatment=$kind==='EARNING'
+                                ? (!empty($adjustment['taxable']) ? 'Taxable' : 'Non-taxable')
+                                : (!empty($adjustment['reduces_taxable_income']) ? 'Reduces taxable income' : 'Net-pay deduction');
+                        ?>
+                            <tr>
+                                <td><?= h((string)($adjustment['name']??'')) ?></td>
+                                <td><?= h($kind) ?></td>
+                                <td><?= h($treatment) ?></td>
+                                <td><?= h(number_format((float)($adjustment['amount']??0),2)) ?></td>
+                                <?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?>
+                                <td>
+                                    <form method="post" action="/payroll/adjustment" onsubmit="return confirm('Remove this payroll adjustment?');">
+                                        <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
+                                        <input type="hidden" name="company_id" value="<?= h($companyId) ?>">
+                                        <input type="hidden" name="run_id" value="<?= h((string)($run['id']??'')) ?>">
+                                        <input type="hidden" name="employee_run_id" value="<?= h((string)($employee['id']??'')) ?>">
+                                        <input type="hidden" name="adjustment_id" value="<?= h((string)($adjustment['id']??'')) ?>">
+                                        <input type="hidden" name="operation" value="delete">
+                                        <button class="text-link" type="submit">Remove</button>
+                                    </form>
+                                </td>
+                                <?php endif; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?>
+            <form method="post" action="/payroll/adjustment" class="selector-card" style="margin-top:16px">
+                <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
+                <input type="hidden" name="company_id" value="<?= h($companyId) ?>">
+                <input type="hidden" name="run_id" value="<?= h((string)($run['id']??'')) ?>">
+                <input type="hidden" name="employee_run_id" value="<?= h((string)($employee['id']??'')) ?>">
+                <input type="hidden" name="operation" value="create">
+                <div class="selectors">
+                    <label>Item name<input name="name" maxlength="150" required placeholder="e.g. Transport allowance or Salary advance"></label>
+                    <label>Type<select name="kind" required><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select></label>
+                    <label>Amount<input name="amount" inputmode="decimal" min="0.01" step="0.01" required placeholder="0.00"></label>
+                    <label>Tax treatment
+                        <span class="muted"><input type="checkbox" name="taxable" checked> Taxable earning</span>
+                        <span class="muted"><input type="checkbox" name="reduces_taxable_income"> Deduction reduces taxable income</span>
+                    </label>
+                    <button class="button secondary" type="submit">Add adjustment</button>
+                </div>
+            </form>
+            <?php endif; ?>
+        </details>
+    <?php endforeach; ?>
+</section>
+
 <section class="table-card card">
     <div class="section-heading">
         <div>
