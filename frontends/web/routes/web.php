@@ -32,6 +32,7 @@ $app->router->get('/payroll/create', [PayrollController::class, 'showCreate'], [
 $app->router->post('/payroll', [PayrollController::class, 'create'], ['require_auth']);
 $app->router->get('/payroll/run', [PayrollController::class, 'show'], ['require_auth']);
 $app->router->post('/payroll/action', [PayrollController::class, 'action'], ['require_auth']);
+$app->router->post('/payroll/refresh-employees', [PayrollController::class, 'refreshEmployees'], ['require_auth']);
 $app->router->post('/payroll/adjustment', [PayrollController::class, 'adjustment'], ['require_auth']);
 
 $app->router->get('/reports/payroll', [PayrollReportController::class, 'summary'], ['require_auth']);
