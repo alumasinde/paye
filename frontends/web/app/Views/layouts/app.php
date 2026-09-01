@@ -16,6 +16,7 @@
             <a class="nav-item <?= ($activeNav ?? '') === 'dashboard' ? 'active' : '' ?>" href="/dashboard">Dashboard</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'companies' ? 'active' : '' ?>" href="/companies">Companies</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'employees' ? 'active' : '' ?>" href="/employees">Employees</a>
+            <a class="nav-item <?= ($activeNav ?? '') === 'departments' ? 'active' : '' ?>" href="/departments">Departments</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'payroll' ? 'active' : '' ?>" href="/payroll">Payroll</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'reports' ? 'active' : '' ?>" href="/payroll">Reports</a>
         </nav>
