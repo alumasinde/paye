@@ -357,7 +357,9 @@ func (r Repository) Reopen(ctx context.Context, companyPublicID, runPublicID, us
  if from!="CALCULATED" && from!="CALCULATION_FAILED"{return model.WorkflowSummary{},ErrConflict}
  if _,err=tx.ExecContext(ctx,`UPDATE payroll_run_employees SET status='PENDING',gross_salary=NULL,taxable_income=NULL,paye_before_relief=NULL,relief=NULL,paye=NULL,statutory_deductions=NULL,custom_deductions=NULL,total_deductions=NULL,net_salary=NULL,rule_versions=NULL,calculated_at=NULL,error_message=NULL WHERE payroll_run_id=?`,runID);err!=nil{return model.WorkflowSummary{},err}
  if _,err=tx.ExecContext(ctx,`UPDATE payroll_runs SET status='DRAFT' WHERE id=?`,runID);err!=nil{return model.WorkflowSummary{},err}
- _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_workflow_events(payroll_run_id,actor_user_id,action,from_status,to_status) VALUES(?,?,?,?,?)`,runID,userID,"REOPEN",from,"DRAFT");if err!=nil{return model.WorkflowSummary{},err}
+ var actorID uint64
+ if err=tx.QueryRowContext(ctx,`SELECT id FROM users WHERE public_id=? AND status='ACTIVE'`,userID).Scan(&actorID);err!=nil{return model.WorkflowSummary{},err}
+ _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_workflow_events(payroll_run_id,actor_user_id,action,from_status,to_status) VALUES(?,?,?,?,?)`,runID,actorID,"REOPEN",from,"DRAFT");if err!=nil{return model.WorkflowSummary{},err}
  if err=tx.Commit();err!=nil{return model.WorkflowSummary{},err}
  return model.WorkflowSummary{PayrollRun:model.PayrollRun{PublicID:runPublicID,Period:period,PeriodStart:start,PeriodEnd:end,Status:"DRAFT"},Action:"REOPEN"},nil
 }
