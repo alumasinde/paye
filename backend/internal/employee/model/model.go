@@ -25,6 +25,7 @@ type Employee struct {
 	EmploymentType string `json:"employment_type,omitempty"`
 	Status string `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
+	CurrentSalary *Salary `json:"current_salary,omitempty"`
 }
 
 type Salary struct {
@@ -37,7 +38,6 @@ type Salary struct {
 
 type EmployeeDetail struct {
 	Employee
-	CurrentSalary *Salary `json:"current_salary,omitempty"`
 }
 
 type SalaryInput struct {
