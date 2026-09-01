@@ -32,6 +32,11 @@ final class PayrollRunService
         return $this->api->request('DELETE', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/employees/' . rawurlencode($employeeRunId) . '/adjustments/' . rawurlencode($adjustmentId), null, $token);
     }
 
+    public function refreshEmployees(string $companyId, string $runId, string $token): array
+    {
+        return $this->api->request('POST', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/refresh-employees', [], $token);
+    }
+
     public function action(string $companyId, string $runId, string $action, string $token): array
     {
         $allowed = ['calculate', 'review', 'approve', 'finalize', 'lock'];
