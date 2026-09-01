@@ -83,7 +83,10 @@ final class EmployeeSpreadsheet
         $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
         if (is_string($sharedXml)) {
             $xml = self::xml($sharedXml);
-            foreach ($xml->si as $si) $sharedStrings[] = trim((string)$si->asXML() === '' ? '' : strip_tags($si->asXML()));
+            foreach ($xml->si as $si) {
+                $raw = $si->asXML();
+                $sharedStrings[] = is_string($raw) ? trim(strip_tags($raw)) : '';
+            }
         }
 
         $sheetPath = 'xl/worksheets/sheet1.xml';
