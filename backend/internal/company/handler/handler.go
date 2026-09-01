@@ -24,6 +24,8 @@ type companyRequest struct {
 	CountryCode      string `json:"country_code"`
 	CurrencyCode     string `json:"currency_code"`
 	PayrollFrequency string `json:"payroll_frequency"`
+	PrimaryColor string `json:"primary_color"`
+	SecondaryColor string `json:"secondary_color"`
 }
 
 type roleRequest struct {
@@ -84,6 +86,7 @@ func (h Handler) UpdateCompany(w http.ResponseWriter, r *http.Request) {
 	c, err := h.Service.UpdateCompany(r.Context(), r.PathValue("company_id"), middleware.UserID(r.Context()), model.UpdateCompanyInput{
 		LegalName: q.LegalName, TradingName: q.TradingName, Email: q.Email, Phone: q.Phone,
 		CountryCode: q.CountryCode, CurrencyCode: q.CurrencyCode, PayrollFrequency: q.PayrollFrequency,
+		PrimaryColor: q.PrimaryColor, SecondaryColor: q.SecondaryColor,
 	})
 	if err != nil {
 		writeError(w, r, err)
@@ -171,6 +174,7 @@ func toCreate(q companyRequest) model.CreateCompanyInput {
 		LegalName: q.LegalName, TradingName: q.TradingName, KRAPIN: q.KRAPIN,
 		Email: q.Email, Phone: q.Phone, CountryCode: q.CountryCode,
 		CurrencyCode: q.CurrencyCode, PayrollFrequency: q.PayrollFrequency,
+		PrimaryColor: q.PrimaryColor, SecondaryColor: q.SecondaryColor,
 	}
 }
 
