@@ -37,6 +37,25 @@ func (h Handler) Calculate(w http.ResponseWriter,r *http.Request){
  status:=http.StatusOK;if out.Failed>0 || out.Pending>0 {status=http.StatusUnprocessableEntity}
  response.JSON(w,status,out)
 }
+func (h Handler) AddAdjustment(w http.ResponseWriter,r *http.Request){
+ var in model.AdjustmentInput
+ d:=json.NewDecoder(http.MaxBytesReader(w,r.Body,1<<20));d.DisallowUnknownFields()
+ if err:=d.Decode(&in);err!=nil{fail(w,r,http.StatusBadRequest,"INVALID_REQUEST","invalid adjustment request");return}
+ out,err:=h.Service.AddAdjustment(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"),r.PathValue("employee_run_id"),in)
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusCreated,out)
+}
+func (h Handler) UpdateAdjustment(w http.ResponseWriter,r *http.Request){
+ var in model.AdjustmentInput
+ d:=json.NewDecoder(http.MaxBytesReader(w,r.Body,1<<20));d.DisallowUnknownFields()
+ if err:=d.Decode(&in);err!=nil{fail(w,r,http.StatusBadRequest,"INVALID_REQUEST","invalid adjustment request");return}
+ out,err:=h.Service.UpdateAdjustment(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"),r.PathValue("employee_run_id"),r.PathValue("adjustment_id"),in)
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}
+func (h Handler) DeleteAdjustment(w http.ResponseWriter,r *http.Request){
+ err:=h.Service.DeleteAdjustment(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"),r.PathValue("employee_run_id"),r.PathValue("adjustment_id"))
+ if err!=nil{writeError(w,r,err);return};w.WriteHeader(http.StatusNoContent)
+}
+
 func writeError(w http.ResponseWriter,r *http.Request,err error){
  switch{
  case errors.Is(err,companyRepo.ErrForbidden):fail(w,r,http.StatusForbidden,"FORBIDDEN","you do not have permission for this action")
