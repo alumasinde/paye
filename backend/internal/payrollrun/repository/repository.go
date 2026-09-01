@@ -127,7 +127,24 @@ func (r Repository) Get(ctx context.Context, companyPublicID, runPublicID string
   }
   d.Employees=append(d.Employees,e)
  }
- if err:=rows.Err();err!=nil{return model.Detail{},err};d.EmployeeCount=len(d.Employees);return d,nil
+ if err:=rows.Err();err!=nil{return model.Detail{},err}
+ d.EmployeeCount=len(d.Employees)
+
+ workflowRows,err:=r.DB.QueryContext(ctx,`SELECT e.action,e.from_status,e.to_status,
+ COALESCE(NULLIF(TRIM(CONCAT(u.first_name,' ',u.last_name)),''),u.email,''),e.created_at
+ FROM payroll_run_workflow_events e
+ LEFT JOIN users u ON u.id=e.actor_user_id
+ WHERE e.payroll_run_id=?
+ ORDER BY e.created_at ASC,e.id ASC`,id)
+ if err!=nil{return model.Detail{},err}
+ defer workflowRows.Close()
+ for workflowRows.Next(){
+  var event model.WorkflowEvent
+  if err:=workflowRows.Scan(&event.Action,&event.FromStatus,&event.ToStatus,&event.ActorName,&event.CreatedAt);err!=nil{return model.Detail{},err}
+  d.Workflow=append(d.Workflow,event)
+ }
+ if err:=workflowRows.Err();err!=nil{return model.Detail{},err}
+ return d,nil
 }
 
 func (r Repository) Pending(ctx context.Context, companyPublicID, runPublicID string)(model.PayrollRun,[]model.PayrollRunEmployee,error){
@@ -192,6 +209,11 @@ func (r Repository) Transition(ctx context.Context, companyPublicID, runPublicID
  default:return model.WorkflowSummary{},ErrConflict
  }
  if out.Status!=expected{return model.WorkflowSummary{},ErrConflict}
+ if action=="REVIEW" {
+  var total,calculated int
+  if err:=tx.QueryRowContext(ctx,`SELECT COUNT(*),SUM(status='CALCULATED') FROM payroll_run_employees WHERE payroll_run_id=?`,runID).Scan(&total,&calculated);err!=nil{return model.WorkflowSummary{},err}
+  if total==0 || total!=calculated{return model.WorkflowSummary{},ErrConflict}
+ }
  var q string
  switch action {
  case "REVIEW": q=`UPDATE payroll_runs SET status='REVIEW',reviewed_by=?,reviewed_at=UTC_TIMESTAMP() WHERE id=?`
@@ -200,6 +222,9 @@ func (r Repository) Transition(ctx context.Context, companyPublicID, runPublicID
  case "LOCK": q=`UPDATE payroll_runs SET status='LOCKED',locked_by=?,locked_at=UTC_TIMESTAMP() WHERE id=?`
  }
  if _,err:=tx.ExecContext(ctx,q,userID,runID);err!=nil{return model.WorkflowSummary{},err}
+ if _,err:=tx.ExecContext(ctx,`INSERT INTO payroll_run_workflow_events
+ (payroll_run_id,actor_user_id,action,from_status,to_status)
+ VALUES(?,?,?,?,?)`,runID,userID,action,out.Status,next);err!=nil{return model.WorkflowSummary{},err}
  if err:=tx.Commit();err!=nil{return model.WorkflowSummary{},err}
  out.Status=next;out.Action=action;return out,nil
 }
