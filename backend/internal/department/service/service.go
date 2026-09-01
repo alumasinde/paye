@@ -1,0 +1,9 @@
+package service
+import("context";"errors";"strings";"github.com/alumasinde/budget254-paye-api/internal/department/model";repo "github.com/alumasinde/budget254-paye-api/internal/department/repository";companyRepo "github.com/alumasinde/budget254-paye-api/internal/company/repository")
+type Service struct{Repo repo.Repository;CompanyRepo companyRepo.Repository}
+func(s Service) require(ctx context.Context,c,u,p string)error{ok,e:=s.CompanyRepo.HasPermission(ctx,c,u,p);if e!=nil{return e};if !ok{return companyRepo.ErrForbidden};return nil}
+func clean(s string)string{return strings.TrimSpace(s)}
+func(s Service) List(ctx context.Context,c,u string)([]model.Department,error){if e:=s.require(ctx,c,u,"departments.read");e!=nil{return nil,e};return s.Repo.List(ctx,c)}
+func(s Service) Create(ctx context.Context,c,u string,in model.CreateInput)(model.Department,error){if e:=s.require(ctx,c,u,"departments.write");e!=nil{return model.Department{},e};in.Name=clean(in.Name);in.Code=strings.ToUpper(clean(in.Code));in.Description=clean(in.Description);if in.Name==""{return model.Department{},errors.New("department name is required")};return s.Repo.Create(ctx,c,in)}
+func(s Service) Update(ctx context.Context,c,u,id string,in model.UpdateInput)(model.Department,error){if e:=s.require(ctx,c,u,"departments.write");e!=nil{return model.Department{},e};in.Name=clean(in.Name);in.Code=strings.ToUpper(clean(in.Code));in.Description=clean(in.Description);if in.Name==""{return model.Department{},errors.New("department name is required")};return s.Repo.Update(ctx,c,id,in)}
+func(s Service) ExistsActive(ctx context.Context,c,id string)(bool,error){return s.Repo.ExistsActive(ctx,c,id)}
