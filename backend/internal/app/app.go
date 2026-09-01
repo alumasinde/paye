@@ -21,6 +21,10 @@ import (
 	companyHandler "github.com/alumasinde/budget254-paye-api/internal/company/handler"
 	companyRepo "github.com/alumasinde/budget254-paye-api/internal/company/repository"
 	companyService "github.com/alumasinde/budget254-paye-api/internal/company/service"
+	departmentHandler "github.com/alumasinde/budget254-paye-api/internal/department/handler"
+	departmentRepo "github.com/alumasinde/budget254-paye-api/internal/department/repository"
+	departmentService "github.com/alumasinde/budget254-paye-api/internal/department/service"
+	
 	employeeHandler "github.com/alumasinde/budget254-paye-api/internal/employee/handler"
 	employeeRepo "github.com/alumasinde/budget254-paye-api/internal/employee/repository"
 	employeeService "github.com/alumasinde/budget254-paye-api/internal/employee/service"
@@ -105,6 +109,8 @@ func NewFromEnv() (*App, error) {
 	// --- customer auth + saved calculations (JWT-protected) ---
 	companySvc := companyService.Service{Repo: companyRepo.Repository{DB: sqlDB}}
 	companyH := companyHandler.Handler{Service: companySvc}
+	departmentSvc := departmentService.Service{Repo: departmentRepo.Repository{DB: sqlDB}, CompanyRepo: companyRepo.Repository{DB: sqlDB}}
+	departmentH := departmentHandler.Handler{Service: departmentSvc}
 	employeeSvc := employeeService.Service{Repo: employeeRepo.Repository{DB: sqlDB}, CompanyRepo: companyRepo.Repository{DB: sqlDB}}
 	employeeH := employeeHandler.Handler{Service: employeeSvc}
 	payrollRunSvc := payrollRunService.Service{Repo: payrollRunRepo.Repository{DB: sqlDB}, CompanyRepo: companyRepo.Repository{DB: sqlDB}, Calculator: payeService}
@@ -152,6 +158,9 @@ func NewFromEnv() (*App, error) {
 	mux.Handle("GET /api/v1/companies/{company_id}/members", middleware.RequireAuth(secret, http.HandlerFunc(companyH.ListMembers)))
 	mux.Handle("POST /api/v1/companies/{company_id}/members", middleware.RequireAuth(secret, http.HandlerFunc(companyH.AddMember)))
 	mux.Handle("PATCH /api/v1/companies/{company_id}/members/{member_id}/role", middleware.RequireAuth(secret, http.HandlerFunc(companyH.UpdateMemberRole)))
+	mux.Handle("GET /api/v1/companies/{company_id}/departments", middleware.RequireAuth(secret, http.HandlerFunc(departmentH.List)))
+	mux.Handle("POST /api/v1/companies/{company_id}/departments", middleware.RequireAuth(secret, http.HandlerFunc(departmentH.Create)))
+	mux.Handle("PATCH /api/v1/companies/{company_id}/departments/{department_id}", middleware.RequireAuth(secret, http.HandlerFunc(departmentH.Update)))
 	mux.Handle("POST /api/v1/companies/{company_id}/employees", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.Create)))
 	mux.Handle("GET /api/v1/companies/{company_id}/employees", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.List)))
 	mux.Handle("GET /api/v1/companies/{company_id}/employees/{employee_id}", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.Get)))
