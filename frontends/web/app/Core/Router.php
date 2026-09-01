@@ -33,7 +33,8 @@ final class Router
         }
 
         foreach ($route['middleware'] as $middleware) {
-            $middleware();
+            if (is_string($middleware) && function_exists($middleware)) { $middleware(); continue; }
+            if (is_callable($middleware)) { $middleware(); }
         }
 
         $handler = $route['handler'];
