@@ -157,3 +157,8 @@ func (s Service) Lock(ctx context.Context,companyID,userID,runID string)(model.W
  if err:=s.require(ctx,companyID,userID,"payroll.lock");err!=nil{return model.WorkflowSummary{},err}
  return s.Repo.Transition(ctx,companyID,runID,userID,"LOCK")
 }
+
+func (s Service) RefreshEmployees(ctx context.Context,companyID,userID,runID string)(model.Detail,error){
+ if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return model.Detail{},err}
+ return s.Repo.RefreshEmployees(ctx,companyID,runID)
+}
