@@ -1,0 +1,18 @@
+package repository
+
+import (
+ "context"; "database/sql"; "errors"; "strings"
+ "github.com/google/uuid"
+ "github.com/alumasinde/budget254-paye-api/internal/department/model"
+)
+
+var ( ErrNotFound=errors.New("not found"); ErrConflict=errors.New("conflict"); ErrInUse=errors.New("department has employees and cannot be deactivated") )
+type Repository struct{ DB *sql.DB }
+
+func (r Repository) companyID(ctx context.Context,p string)(uint64,error){var id uint64;err:=r.DB.QueryRowContext(ctx,"SELECT id FROM companies WHERE public_id=? AND status='ACTIVE'",p).Scan(&id);if errors.Is(err,sql.ErrNoRows){return 0,ErrNotFound};return id,err}
+func (r Repository) List(ctx context.Context,c string)([]model.Department,error){cid,e:=r.companyID(ctx,c);if e!=nil{return nil,e};rows,e:=r.DB.QueryContext(ctx,`SELECT d.public_id,d.name,COALESCE(d.code,''),COALESCE(d.description,''),d.is_active,COUNT(e.id),d.created_at FROM departments d LEFT JOIN employees e ON e.department_id=d.id WHERE d.company_id=? GROUP BY d.id ORDER BY d.is_active DESC,d.name`,cid);if e!=nil{return nil,e};defer rows.Close();out:=[]model.Department{};for rows.Next(){var d model.Department;if e=rows.Scan(&d.PublicID,&d.Name,&d.Code,&d.Description,&d.IsActive,&d.EmployeeCount,&d.CreatedAt);e!=nil{return nil,e};out=append(out,d)};return out,rows.Err()}
+func (r Repository) Create(ctx context.Context,c string,in model.CreateInput)(model.Department,error){cid,e:=r.companyID(ctx,c);if e!=nil{return model.Department{},e};pid:=uuid.NewString();_,e=r.DB.ExecContext(ctx,"INSERT INTO departments(public_id,company_id,name,code,description) VALUES(?,?,?,?,?)",pid,cid,in.Name,nilIf(in.Code),nilIf(in.Description));if e!=nil{if strings.Contains(strings.ToLower(e.Error()),"duplicate"){return model.Department{},ErrConflict};return model.Department{},e};return r.Get(ctx,c,pid)}
+func (r Repository) Get(ctx context.Context,c,id string)(model.Department,error){cid,e:=r.companyID(ctx,c);if e!=nil{return model.Department{},e};var d model.Department;e=r.DB.QueryRowContext(ctx,`SELECT d.public_id,d.name,COALESCE(d.code,''),COALESCE(d.description,''),d.is_active,COUNT(e.id),d.created_at FROM departments d LEFT JOIN employees e ON e.department_id=d.id WHERE d.company_id=? AND d.public_id=? GROUP BY d.id`,cid,id).Scan(&d.PublicID,&d.Name,&d.Code,&d.Description,&d.IsActive,&d.EmployeeCount,&d.CreatedAt);if errors.Is(e,sql.ErrNoRows){return model.Department{},ErrNotFound};return d,e}
+func (r Repository) Update(ctx context.Context,c,id string,in model.UpdateInput)(model.Department,error){cid,e:=r.companyID(ctx,c);if e!=nil{return model.Department{},e};if !in.IsActive{var n int;e=r.DB.QueryRowContext(ctx,"SELECT COUNT(*) FROM employees WHERE company_id=? AND department_id=(SELECT id FROM departments WHERE public_id=? AND company_id=?)",cid,id,cid).Scan(&n);if e!=nil{return model.Department{},e};if n>0{return model.Department{},ErrInUse}};res,e:=r.DB.ExecContext(ctx,"UPDATE departments SET name=?,code=?,description=?,is_active=? WHERE company_id=? AND public_id=?",in.Name,nilIf(in.Code),nilIf(in.Description),in.IsActive,cid,id);if e!=nil{if strings.Contains(strings.ToLower(e.Error()),"duplicate"){return model.Department{},ErrConflict};return model.Department{},e};n,_:=res.RowsAffected();if n==0{return model.Department{},ErrNotFound};return r.Get(ctx,c,id)}
+func (r Repository) ExistsActive(ctx context.Context,c,id string)(bool,error){cid,e:=r.companyID(ctx,c);if e!=nil{return false,e};var n int;e=r.DB.QueryRowContext(ctx,"SELECT COUNT(*) FROM departments WHERE company_id=? AND public_id=? AND is_active=TRUE",cid,id).Scan(&n);return n>0,e}
+func nilIf(s string) any{if strings.TrimSpace(s)==""{return nil};return strings.TrimSpace(s)}
