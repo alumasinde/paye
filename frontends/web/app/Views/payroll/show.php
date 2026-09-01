@@ -15,10 +15,12 @@ $steps=[
 ];
 $order=array_keys($steps);
 $currentIndex=array_search($status,$order,true);
+if ($status==='CALCULATION_FAILED') $currentIndex=0;
 $currentIndex=$currentIndex===false?0:$currentIndex;
 
 $actions=[
     'DRAFT'=>['calculate','Calculate payroll','Calculate all employee snapshots before review.',''],
+    'CALCULATION_FAILED'=>['calculate','Retry calculation','Retry employees that could not be calculated. Resolve any employee salary or payroll rule issues shown below before sending the run for review.',''],
     'CALCULATED'=>['review','Send to review','Confirm the payroll figures and send this run into review.',''],
     'REVIEW'=>['approve','Approve payroll','Approve this reviewed payroll before finalization.','return confirm("Approve this payroll? Approved figures should only move forward to finalization.");'],
     'APPROVED'=>['finalize','Finalize payroll','Finalize the approved payroll and preserve the completed results.','return confirm("Finalize this payroll? This should only be done after the figures are fully approved.");'],
