@@ -58,12 +58,16 @@ $statusClass='status-'.strtolower($status);
     <div class="steps" aria-label="Payroll workflow">
         <?php foreach($steps as $stepStatus=>$stepLabel):
             $stepIndex=array_search($stepStatus,$order,true);
-            $class=$stepIndex===$currentIndex?'step current':'step';
+            $isCurrent=$stepIndex===$currentIndex;
+            $isCompleted=$stepIndex<$currentIndex;
+            $class='step'.($isCurrent?' current':($isCompleted?' completed':''));
+            $event=$historyByStatus[$stepStatus]??null;
+            $actor=$event!==null ? trim((string)($event['actor_name']??'')) : '';
         ?>
             <div class="<?= h($class) ?>">
-                <?= h($stepLabel) ?>
-                <?php if(isset($historyByStatus[$stepStatus])): ?>
-                    <br><span><?= h((string)($historyByStatus[$stepStatus]['actor_name']??'')) ?></span>
+                <span><?= h($stepLabel) ?></span>
+                <?php if($actor!==''): ?>
+                    <span class="step-meta"><?= h($actor) ?></span>
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
