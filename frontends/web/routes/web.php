@@ -17,6 +17,10 @@ $app->router->post('/departments', [DepartmentController::class, 'create'], ['re
 $app->router->get('/employees', [EmployeeController::class, 'index'], ['require_auth']);
 $app->router->get('/employees/create', [EmployeeController::class, 'showCreate'], ['require_auth']);
 $app->router->post('/employees', [EmployeeController::class, 'create'], ['require_auth']);
+$app->router->get('/employees/show', [EmployeeController::class, 'show'], ['require_auth']);
+$app->router->get('/employees/edit', [EmployeeController::class, 'showEdit'], ['require_auth']);
+$app->router->post('/employees/update', [EmployeeController::class, 'update'], ['require_auth']);
+$app->router->post('/employees/salary', [EmployeeController::class, 'addSalary'], ['require_auth']);
 $app->router->get('/employees/import', [EmployeeController::class, 'showImport'], ['require_auth']);
 $app->router->post('/employees/import/preview', [EmployeeController::class, 'previewImport'], ['require_auth']);
 $app->router->post('/employees/import/confirm', [EmployeeController::class, 'confirmImport'], ['require_auth']);
