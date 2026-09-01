@@ -35,6 +35,18 @@ final class PayrollReportController
         foreach ($result['report']['employees'] as $item) if ((string)($item['id'] ?? '') === $employeeId) { $employee = $item; break; }
         if (!$employee) { Session::flash('error', 'Employee was not found in this payroll run.'); redirect('/reports/payroll?company=' . rawurlencode($companyId) . '&run=' . rawurlencode($runId)); }
 
-        view('reports/payslip', ['title'=>'Payslip','layout'=>'app','activeNav'=>'reports','user'=>auth_user(),'companyId'=>$companyId,'run'=>$result['report']['run'],'employee'=>$employee]);
+        $companyResult = (new CompanyService())->get($companyId, auth_access_token());
+        $company = $companyResult['ok'] ? (array)($companyResult['company'] ?? []) : [];
+
+        view('reports/payslip', [
+            'title' => 'Payslip',
+            'layout' => 'app',
+            'activeNav' => 'reports',
+            'user' => auth_user(),
+            'companyId' => $companyId,
+            'company' => $company,
+            'run' => $result['report']['run'],
+            'employee' => $employee,
+        ]);
     }
 }
