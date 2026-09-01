@@ -19,6 +19,7 @@ require_once __DIR__ . '/../app/Controllers/EmployeeController.php';
 require_once __DIR__ . '/../app/Controllers/DepartmentController.php';
 require_once __DIR__ . '/../app/Controllers/PayrollController.php';
 require_once __DIR__ . '/../app/Controllers/PayrollReportController.php';
+require_once __DIR__ . '/../app/Controllers/SettingsController.php';
 $app = new App();
 require __DIR__ . '/../routes/web.php';
 return $app;
