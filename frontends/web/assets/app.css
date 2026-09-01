@@ -5,3 +5,8 @@
 @import url("./css/pages.css");
 @import url("./css/responsive.css");
 @import url("./css/payslip.css");
+
+
+/* Employee import/export actions */
+.page-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:640px){.page-actions{width:100%}.page-actions .button{flex:1;text-align:center;justify-content:center}}
