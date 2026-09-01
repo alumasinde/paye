@@ -151,12 +151,12 @@ func (r Repository) Get(ctx context.Context, companyPublicID, runPublicID string
 }
 
 func (r Repository) adjustmentsForEmployee(ctx context.Context, employeeRunPublicID string)([]model.PayrollAdjustment,error){
- rows,err:=r.DB.QueryContext(ctx,`SELECT public_id,name,kind,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at
+ rows,err:=r.DB.QueryContext(ctx,`SELECT public_id,name,kind,category,COALESCE(payee,''),COALESCE(reference_no,''),source,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at
  FROM payroll_run_employee_adjustments WHERE payroll_run_employee_id=(SELECT id FROM payroll_run_employees WHERE public_id=?)
  ORDER BY created_at ASC,id ASC`,employeeRunPublicID)
  if err!=nil{return nil,err};defer rows.Close()
  out:=make([]model.PayrollAdjustment,0)
- for rows.Next(){var a model.PayrollAdjustment;if err:=rows.Scan(&a.PublicID,&a.Name,&a.Kind,&a.Amount,&a.Taxable,&a.ReducesTaxableIncome,&a.CreatedAt,&a.UpdatedAt);err!=nil{return nil,err};out=append(out,a)}
+ for rows.Next(){var a model.PayrollAdjustment;if err:=rows.Scan(&a.PublicID,&a.Name,&a.Kind,&a.Category,&a.Payee,&a.ReferenceNo,&a.Source,&a.Amount,&a.Taxable,&a.ReducesTaxableIncome,&a.CreatedAt,&a.UpdatedAt);err!=nil{return nil,err};out=append(out,a)}
  return out,rows.Err()
 }
 
@@ -180,12 +180,12 @@ func (r Repository) AddAdjustment(ctx context.Context, companyPublicID,runPublic
  if errors.Is(err,sql.ErrNoRows){return model.PayrollAdjustment{},ErrNotFound};if err!=nil{return model.PayrollAdjustment{},err}
  if status!="DRAFT" && status!="CALCULATION_FAILED"{return model.PayrollAdjustment{},ErrConflict}
  publicID:=uuid.NewString()
- _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_employee_adjustments(public_id,payroll_run_employee_id,name,kind,amount,taxable,reduces_taxable_income)
- VALUES(?,?,?,?,?,?,?)`,publicID,employeeRunID,in.Name,in.Kind,in.Amount,in.Taxable,in.ReducesTaxableIncome)
+ _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_employee_adjustments(public_id,payroll_run_employee_id,name,kind,category,payee,reference_no,source,amount,taxable,reduces_taxable_income)
+ VALUES(?,?,?,?,?,?,?,?,?,?,?)`,publicID,employeeRunID,in.Name,in.Kind,in.Category,nullIf(in.Payee),nullIf(in.ReferenceNo),"MANUAL",in.Amount,in.Taxable,in.ReducesTaxableIncome)
  if err!=nil{return model.PayrollAdjustment{},err}
  if err=tx.Commit();err!=nil{return model.PayrollAdjustment{},err}
  var out model.PayrollAdjustment
- err=r.DB.QueryRowContext(ctx,`SELECT public_id,name,kind,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at FROM payroll_run_employee_adjustments WHERE public_id=?`,publicID).
+ err=r.DB.QueryRowContext(ctx,`SELECT public_id,name,kind,category,COALESCE(payee,''),COALESCE(reference_no,''),source,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at FROM payroll_run_employee_adjustments WHERE public_id=?`,publicID).
   Scan(&out.PublicID,&out.Name,&out.Kind,&out.Amount,&out.Taxable,&out.ReducesTaxableIncome,&out.CreatedAt,&out.UpdatedAt)
  return out,err
 }
@@ -200,11 +200,11 @@ func (r Repository) UpdateAdjustment(ctx context.Context,companyPublicID,runPubl
  WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=? AND a.public_id=? FOR UPDATE`,cid,runPublicID,employeeRunPublicID,adjustmentPublicID).Scan(&status)
  if errors.Is(err,sql.ErrNoRows){return model.PayrollAdjustment{},ErrNotFound};if err!=nil{return model.PayrollAdjustment{},err}
  if status!="DRAFT" && status!="CALCULATION_FAILED"{return model.PayrollAdjustment{},ErrConflict}
- _,err=tx.ExecContext(ctx,`UPDATE payroll_run_employee_adjustments SET name=?,kind=?,amount=?,taxable=?,reduces_taxable_income=? WHERE public_id=?`,in.Name,in.Kind,in.Amount,in.Taxable,in.ReducesTaxableIncome,adjustmentPublicID)
+ _,err=tx.ExecContext(ctx,`UPDATE payroll_run_employee_adjustments SET name=?,kind=?,category=?,payee=?,reference_no=?,amount=?,taxable=?,reduces_taxable_income=? WHERE public_id=?`,in.Name,in.Kind,in.Category,nullIf(in.Payee),nullIf(in.ReferenceNo),in.Amount,in.Taxable,in.ReducesTaxableIncome,adjustmentPublicID)
  if err!=nil{return model.PayrollAdjustment{},err}
  if err=tx.Commit();err!=nil{return model.PayrollAdjustment{},err}
  var out model.PayrollAdjustment
- err=r.DB.QueryRowContext(ctx,`SELECT public_id,name,kind,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at FROM payroll_run_employee_adjustments WHERE public_id=?`,adjustmentPublicID).
+ err=r.DB.QueryRowContext(ctx,`SELECT public_id,name,kind,category,COALESCE(payee,''),COALESCE(reference_no,''),source,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at FROM payroll_run_employee_adjustments WHERE public_id=?`,adjustmentPublicID).
   Scan(&out.PublicID,&out.Name,&out.Kind,&out.Amount,&out.Taxable,&out.ReducesTaxableIncome,&out.CreatedAt,&out.UpdatedAt)
  return out,err
 }
@@ -379,4 +379,20 @@ func (r Repository) Validate(ctx context.Context, companyPublicID, runPublicID s
   if strings.TrimSpace(shif)==""{out.Warnings++;out.Checks=append(out.Checks,model.ValidationCheck{Severity:"WARNING",EmployeeID:id,EmployeeName:name,Code:"MISSING_SHIF",Message:"Employee is missing a SHIF number"})}
  }
  if err:=rows.Err();err!=nil{return out,err};return out,nil
+}
+
+
+func (r Repository) AddBulkInput(ctx context.Context, companyPublicID, runPublicID string, in model.BulkInput)(model.BulkInputResult,error){
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.BulkInputResult{},err}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.BulkInputResult{},err};defer tx.Rollback()
+ var runID uint64;var status string
+ err=tx.QueryRowContext(ctx,`SELECT id,status FROM payroll_runs WHERE company_id=? AND public_id=? FOR UPDATE`,cid,runPublicID).Scan(&runID,&status)
+ if errors.Is(err,sql.ErrNoRows){return model.BulkInputResult{},ErrNotFound};if err!=nil{return model.BulkInputResult{},err}
+ if status!="DRAFT" && status!="CALCULATION_FAILED"{return model.BulkInputResult{},ErrConflict}
+ q:=`SELECT id FROM payroll_run_employees WHERE payroll_run_id=?`;args:=[]any{runID}
+ if len(in.EmployeeIDs)>0{marks:=make([]string,len(in.EmployeeIDs));for i,id:=range in.EmployeeIDs{marks[i]="?";args=append(args,id)};q+=" AND public_id IN ("+strings.Join(marks,",")+")"}
+ rows,err:=tx.QueryContext(ctx,q,args...);if err!=nil{return model.BulkInputResult{},err};defer rows.Close()
+ out:=model.BulkInputResult{PayrollRunID:runPublicID}
+ for rows.Next(){var id uint64;if err:=rows.Scan(&id);err!=nil{return out,err};_,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_employee_adjustments(public_id,payroll_run_employee_id,name,kind,category,payee,reference_no,source,amount,taxable,reduces_taxable_income) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,uuid.NewString(),id,in.Name,in.Kind,in.Category,nullIf(in.Payee),nullIf(in.ReferenceNo),"PAYROLL_BULK",in.Amount,in.Taxable,in.ReducesTaxableIncome);if err!=nil{return out,err};out.Applied++}
+ if err:=rows.Err();err!=nil{return out,err};if err:=tx.Commit();err!=nil{return out,err};return out,nil
 }
