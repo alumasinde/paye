@@ -4,6 +4,7 @@ $error=Session::flash('error');
 $employees=(array)($run['employees']??[]);
 $status=(string)($run['status']??'DRAFT');
 $workflow=(array)($run['workflow']??[]);
+$validation=(array)($validation??[]);$checks=(array)($validation['checks']??[]);$blocking=(int)($validation['blocking']??0);$warnings=(int)($validation['warnings']??0);
 
 $steps=[
     'DRAFT'=>'Draft',
@@ -58,12 +59,20 @@ foreach($employees as $employee){$es=(string)($employee['status']??'PENDING'); i
         <div class="stat-card"><span class="muted">Gross pay</span><strong>KES <?= h(number_format($grossTotal,2)) ?></strong><small>Calculated employees</small></div>
         <div class="stat-card"><span class="muted">Net pay</span><strong>KES <?= h(number_format($netTotal,2)) ?></strong><small>Calculated employees</small></div>
     </div>
+    <?php if($status==='CALCULATED' || $status==='CALCULATION_FAILED'): ?>
+    <div class="workflow-action"><div><h3>Reopen payroll</h3><p class="muted">Return this calculated payroll to draft, clear calculation results, then refresh employees and recalculate. Adjustments are preserved.</p></div><form method="post" action="/payroll/action" onsubmit="return confirm('Reopen this payroll and clear all calculation results?');"><input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>"><input type="hidden" name="company_id" value="<?= h($companyId) ?>"><input type="hidden" name="run_id" value="<?= h((string)($run['id']??'')) ?>"><input type="hidden" name="action" value="reopen"><button class="button secondary" type="submit">Reopen to draft</button></form></div>
+    <?php endif; ?>
     <?php if($editable): ?>
     <div class="workflow-action">
         <div><h3>Employee snapshot</h3><p class="muted">Refresh this draft after correcting employment dates or salary effective dates. Existing employee snapshots and adjustments are preserved.</p></div>
         <form method="post" action="/payroll/refresh-employees"><input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>"><input type="hidden" name="company_id" value="<?= h($companyId) ?>"><input type="hidden" name="run_id" value="<?= h((string)($run['id']??'')) ?>"><button class="button secondary" type="submit">Refresh employees</button></form>
     </div>
     <?php endif; ?>
+</section>
+
+<section id="validation" class="card">
+ <div class="section-heading"><div><p class="eyebrow">PHASE 2 · VALIDATION</p><h2>Payroll validation & exceptions</h2><p class="muted"><?= $blocking ?> blocking issue<?= $blocking===1?'':'s' ?> · <?= $warnings ?> warning<?= $warnings===1?'':'s' ?></p></div></div>
+ <?php if($checks): ?><div class="table-wrap"><table><thead><tr><th>Severity</th><th>Employee</th><th>Issue</th></tr></thead><tbody><?php foreach($checks as $check): ?><tr><td><span class="status small"><?= h((string)($check['severity']??'')) ?></span></td><td><?= h((string)($check['employee_name']??'Payroll')) ?></td><td><?= h((string)($check['message']??'')) ?></td></tr><?php endforeach; ?></tbody></table></div><?php else: ?><p class="muted">No validation issues found.</p><?php endif; ?>
 </section>
 
 <section class="workflow card">
