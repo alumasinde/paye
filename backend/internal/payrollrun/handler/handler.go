@@ -82,3 +82,8 @@ func (h Handler) Lock(w http.ResponseWriter,r *http.Request){
  out,err:=h.Service.Lock(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
  if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
 }
+
+func (h Handler) RefreshEmployees(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.RefreshEmployees(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
+}
