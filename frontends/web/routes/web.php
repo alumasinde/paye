@@ -17,5 +17,5 @@ $app->router->post('/employees', [EmployeeController::class, 'create'], ['requir
 $app->router->get('/payroll', [PayrollController::class, 'index'], ['require_auth']);
 $app->router->get('/payroll/create', [PayrollController::class, 'showCreate'], ['require_auth']);
 $app->router->post('/payroll', [PayrollController::class, 'create'], ['require_auth']);
-$app->router->get('/payroll/{run}', [PayrollController::class, 'show'], ['require_auth']);
+$app->router->get('/payroll/run', [PayrollController::class, 'show'], ['require_auth']);
 $app->router->post('/payroll/action', [PayrollController::class, 'action'], ['require_auth']);
