@@ -125,6 +125,9 @@ func (r Repository) Get(ctx context.Context, companyPublicID, runPublicID string
    e.RuleVersions=map[string]string{}
    _=json.Unmarshal([]byte(rules.String),&e.RuleVersions)
   }
+  adjustments,adjErr:=r.adjustmentsForEmployee(ctx,e.PublicID)
+  if adjErr!=nil{return model.Detail{},adjErr}
+  e.Adjustments=adjustments
   d.Employees=append(d.Employees,e)
  }
  if err:=rows.Err();err!=nil{return model.Detail{},err}
@@ -145,6 +148,78 @@ func (r Repository) Get(ctx context.Context, companyPublicID, runPublicID string
  }
  if err:=workflowRows.Err();err!=nil{return model.Detail{},err}
  return d,nil
+}
+
+func (r Repository) adjustmentsForEmployee(ctx context.Context, employeeRunPublicID string)([]model.PayrollAdjustment,error){
+ rows,err:=r.DB.QueryContext(ctx,`SELECT public_id,name,kind,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at
+ FROM payroll_run_employee_adjustments WHERE payroll_run_employee_id=(SELECT id FROM payroll_run_employees WHERE public_id=?)
+ ORDER BY created_at ASC,id ASC`,employeeRunPublicID)
+ if err!=nil{return nil,err};defer rows.Close()
+ out:=make([]model.PayrollAdjustment,0)
+ for rows.Next(){var a model.PayrollAdjustment;if err:=rows.Scan(&a.PublicID,&a.Name,&a.Kind,&a.Amount,&a.Taxable,&a.ReducesTaxableIncome,&a.CreatedAt,&a.UpdatedAt);err!=nil{return nil,err};out=append(out,a)}
+ return out,rows.Err()
+}
+
+func (r Repository) editableEmployeeRun(ctx context.Context, companyPublicID, runPublicID, employeeRunPublicID string)(uint64,error){
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return 0,err}
+ var id uint64;var status string
+ err=r.DB.QueryRowContext(ctx,`SELECT pre.id,pr.status FROM payroll_run_employees pre
+ JOIN payroll_runs pr ON pr.id=pre.payroll_run_id
+ WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=? FOR UPDATE`,cid,runPublicID,employeeRunPublicID).Scan(&id,&status)
+ if errors.Is(err,sql.ErrNoRows){return 0,ErrNotFound};if err!=nil{return 0,err}
+ if status!="DRAFT" && status!="CALCULATION_FAILED"{return 0,ErrConflict}
+ return id,nil
+}
+
+func (r Repository) AddAdjustment(ctx context.Context, companyPublicID,runPublicID,employeeRunPublicID string,in model.AdjustmentInput)(model.PayrollAdjustment,error){
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.PayrollAdjustment{},err};defer tx.Rollback()
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.PayrollAdjustment{},err}
+ var employeeRunID uint64;var status string
+ err=tx.QueryRowContext(ctx,`SELECT pre.id,pr.status FROM payroll_run_employees pre JOIN payroll_runs pr ON pr.id=pre.payroll_run_id
+ WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=? FOR UPDATE`,cid,runPublicID,employeeRunPublicID).Scan(&employeeRunID,&status)
+ if errors.Is(err,sql.ErrNoRows){return model.PayrollAdjustment{},ErrNotFound};if err!=nil{return model.PayrollAdjustment{},err}
+ if status!="DRAFT" && status!="CALCULATION_FAILED"{return model.PayrollAdjustment{},ErrConflict}
+ publicID:=uuid.NewString()
+ _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_employee_adjustments(public_id,payroll_run_employee_id,name,kind,amount,taxable,reduces_taxable_income)
+ VALUES(?,?,?,?,?,?,?)`,publicID,employeeRunID,in.Name,in.Kind,in.Amount,in.Taxable,in.ReducesTaxableIncome)
+ if err!=nil{return model.PayrollAdjustment{},err}
+ if err=tx.Commit();err!=nil{return model.PayrollAdjustment{},err}
+ var out model.PayrollAdjustment
+ err=r.DB.QueryRowContext(ctx,`SELECT public_id,name,kind,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at FROM payroll_run_employee_adjustments WHERE public_id=?`,publicID).
+  Scan(&out.PublicID,&out.Name,&out.Kind,&out.Amount,&out.Taxable,&out.ReducesTaxableIncome,&out.CreatedAt,&out.UpdatedAt)
+ return out,err
+}
+
+func (r Repository) UpdateAdjustment(ctx context.Context,companyPublicID,runPublicID,employeeRunPublicID,adjustmentPublicID string,in model.AdjustmentInput)(model.PayrollAdjustment,error){
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.PayrollAdjustment{},err}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.PayrollAdjustment{},err};defer tx.Rollback()
+ var status string
+ err=tx.QueryRowContext(ctx,`SELECT pr.status FROM payroll_run_employee_adjustments a
+ JOIN payroll_run_employees pre ON pre.id=a.payroll_run_employee_id
+ JOIN payroll_runs pr ON pr.id=pre.payroll_run_id
+ WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=? AND a.public_id=? FOR UPDATE`,cid,runPublicID,employeeRunPublicID,adjustmentPublicID).Scan(&status)
+ if errors.Is(err,sql.ErrNoRows){return model.PayrollAdjustment{},ErrNotFound};if err!=nil{return model.PayrollAdjustment{},err}
+ if status!="DRAFT" && status!="CALCULATION_FAILED"{return model.PayrollAdjustment{},ErrConflict}
+ _,err=tx.ExecContext(ctx,`UPDATE payroll_run_employee_adjustments SET name=?,kind=?,amount=?,taxable=?,reduces_taxable_income=? WHERE public_id=?`,in.Name,in.Kind,in.Amount,in.Taxable,in.ReducesTaxableIncome,adjustmentPublicID)
+ if err!=nil{return model.PayrollAdjustment{},err}
+ if err=tx.Commit();err!=nil{return model.PayrollAdjustment{},err}
+ var out model.PayrollAdjustment
+ err=r.DB.QueryRowContext(ctx,`SELECT public_id,name,kind,CAST(amount AS CHAR),taxable,reduces_taxable_income,created_at,updated_at FROM payroll_run_employee_adjustments WHERE public_id=?`,adjustmentPublicID).
+  Scan(&out.PublicID,&out.Name,&out.Kind,&out.Amount,&out.Taxable,&out.ReducesTaxableIncome,&out.CreatedAt,&out.UpdatedAt)
+ return out,err
+}
+
+func (r Repository) DeleteAdjustment(ctx context.Context,companyPublicID,runPublicID,employeeRunPublicID,adjustmentPublicID string) error{
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return err}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return err};defer tx.Rollback()
+ var status string
+ err=tx.QueryRowContext(ctx,`SELECT pr.status FROM payroll_run_employee_adjustments a
+ JOIN payroll_run_employees pre ON pre.id=a.payroll_run_employee_id JOIN payroll_runs pr ON pr.id=pre.payroll_run_id
+ WHERE pr.company_id=? AND pr.public_id=? AND pre.public_id=? AND a.public_id=? FOR UPDATE`,cid,runPublicID,employeeRunPublicID,adjustmentPublicID).Scan(&status)
+ if errors.Is(err,sql.ErrNoRows){return ErrNotFound};if err!=nil{return err}
+ if status!="DRAFT" && status!="CALCULATION_FAILED"{return ErrConflict}
+ if _,err=tx.ExecContext(ctx,`DELETE FROM payroll_run_employee_adjustments WHERE public_id=?`,adjustmentPublicID);err!=nil{return err}
+ return tx.Commit()
 }
 
 func (r Repository) Pending(ctx context.Context, companyPublicID, runPublicID string)(model.PayrollRun,[]model.PayrollRunEmployee,error){
