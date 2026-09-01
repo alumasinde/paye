@@ -14,7 +14,7 @@
 <section class="form-section"><div><p class="eyebrow">02 · EMPLOYMENT</p><h3>Role and start details</h3></div><div class="form-grid">
 <label>Employment date<input type="date" name="employment_date" value="<?= h((string)($old['employment_date']??date('Y-m-d'))) ?>" required></label>
 <label>Job title<input name="job_title" value="<?= h((string)($old['job_title']??'')) ?>"></label>
-<label>Department<input name="department" value="<?= h((string)($old['department']??'')) ?>"></label>
+<label>Department<select name="department_id"><option value="">No department</option><?php foreach(($departments??[]) as $department): $id=(string)($department['id']??''); ?><option value="<?= h($id) ?>" <?= $id===(string)($old['department_id']??'')?'selected':'' ?>><?= h((string)($department['name']??'Department')) ?><?= !empty($department['code'])?' · '.h((string)$department['code']):'' ?></option><?php endforeach; ?></select><span class="muted">Departments are specific to the selected company.</span></label>
 <label>Employment type<select name="employment_type"><?php foreach(['PERMANENT','CONTRACT','CASUAL','INTERN','PART_TIME'] as $v): ?><option value="<?= $v ?>" <?= ($old['employment_type']??'PERMANENT')===$v?'selected':'' ?>><?= ucwords(strtolower(str_replace('_',' ',$v))) ?></option><?php endforeach; ?></select></label>
 </div></section>
 <section class="form-section"><div><p class="eyebrow">03 · STATUTORY & SALARY</p><h3>Payroll information</h3></div><div class="form-grid">
