@@ -396,3 +396,12 @@ func (r Repository) AddBulkInput(ctx context.Context, companyPublicID, runPublic
  for rows.Next(){var id uint64;if err:=rows.Scan(&id);err!=nil{return out,err};_,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_employee_adjustments(public_id,payroll_run_employee_id,name,kind,category,payee,reference_no,source,amount,taxable,reduces_taxable_income) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,uuid.NewString(),id,in.Name,in.Kind,in.Category,nullIf(in.Payee),nullIf(in.ReferenceNo),"PAYROLL_BULK",in.Amount,in.Taxable,in.ReducesTaxableIncome);if err!=nil{return out,err};out.Applied++}
  if err:=rows.Err();err!=nil{return out,err};if err:=tx.Commit();err!=nil{return out,err};return out,nil
 }
+
+
+func nullIf(value string) any {
+ value = strings.TrimSpace(value)
+ if value == "" {
+  return nil
+ }
+ return value
+}
