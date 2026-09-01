@@ -88,3 +88,6 @@ type CalculationSummary struct {
  Failed int `json:"failed"`
  Pending int `json:"pending"`
 }
+
+type ValidationCheck struct { Severity string `json:"severity"`; EmployeeID string `json:"employee_id,omitempty"`; EmployeeName string `json:"employee_name,omitempty"`; Code string `json:"code"`; Message string `json:"message"` }
+type ValidationSummary struct { PayrollRun; Blocking int `json:"blocking"`; Warnings int `json:"warnings"`; Checks []ValidationCheck `json:"checks"` }
