@@ -211,7 +211,7 @@ func (r Repository) Transition(ctx context.Context, companyPublicID, runPublicID
  if out.Status!=expected{return model.WorkflowSummary{},ErrConflict}
  if action=="REVIEW" {
   var total,calculated int
-  if err:=tx.QueryRowContext(ctx,`SELECT COUNT(*),SUM(status='CALCULATED') FROM payroll_run_employees WHERE payroll_run_id=?`,runID).Scan(&total,&calculated);err!=nil{return model.WorkflowSummary{},err}
+  if err:=tx.QueryRowContext(ctx,`SELECT COUNT(*),COALESCE(SUM(status='CALCULATED'),0) FROM payroll_run_employees WHERE payroll_run_id=?`,runID).Scan(&total,&calculated);err!=nil{return model.WorkflowSummary{},err}
   if total==0 || total!=calculated{return model.WorkflowSummary{},ErrConflict}
  }
  var q string
