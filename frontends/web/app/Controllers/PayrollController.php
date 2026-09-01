@@ -66,7 +66,7 @@ final class PayrollController
 
         $runId = (string)($result['data']['id'] ?? '');
         Session::flash('success', 'Payroll draft created. Review the employee snapshot and calculate when ready.');
-        redirect($runId !== '' ? '/payroll/' . rawurlencode($runId) . '?company=' . rawurlencode($companyId) : '/payroll?company=' . rawurlencode($companyId));
+        redirect($runId !== '' ? '/payroll/run?run=' . rawurlencode($runId) . '&company=' . rawurlencode($companyId) : '/payroll?company=' . rawurlencode($companyId));
     }
 
     public function show(): void
@@ -102,6 +102,6 @@ final class PayrollController
 
         $result = (new PayrollRunService())->action($companyId, $runId, $action, auth_access_token());
         Session::flash($result['ok'] ? 'success' : 'error', $result['ok'] ? ucfirst($action) . ' completed successfully.' : $result['message']);
-        redirect('/payroll/' . rawurlencode($runId) . '?company=' . rawurlencode($companyId));
+        redirect('/payroll/run?run=' . rawurlencode($runId) . '&company=' . rawurlencode($companyId));
     }
 }
