@@ -60,6 +60,8 @@ type UpdateCompanyInput struct {
 	CountryCode      string
 	CurrencyCode     string
 	PayrollFrequency string
+	PrimaryColor     string
+	SecondaryColor   string
 }
 
 type CreateRoleInput struct {
