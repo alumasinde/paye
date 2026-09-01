@@ -162,3 +162,6 @@ func (s Service) RefreshEmployees(ctx context.Context,companyID,userID,runID str
  if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return model.Detail{},err}
  return s.Repo.RefreshEmployees(ctx,companyID,runID)
 }
+
+func (s Service) Reopen(ctx context.Context,companyID,userID,runID string)(model.WorkflowSummary,error){if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return model.WorkflowSummary{},err};return s.Repo.Reopen(ctx,companyID,runID,userID)}
+func (s Service) Validate(ctx context.Context,companyID,userID,runID string)(model.ValidationSummary,error){if err:=s.require(ctx,companyID,userID,"employees.read");err!=nil{return model.ValidationSummary{},err};return s.Repo.Validate(ctx,companyID,runID)}
