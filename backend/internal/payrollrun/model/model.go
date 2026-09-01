@@ -37,9 +37,18 @@ type PayrollRunEmployee struct {
  ErrorMessage string `json:"error_message,omitempty"`
 }
 
+type WorkflowEvent struct {
+ Action string `json:"action"`
+ FromStatus string `json:"from_status"`
+ ToStatus string `json:"to_status"`
+ ActorName string `json:"actor_name,omitempty"`
+ CreatedAt time.Time `json:"created_at"`
+}
+
 type Detail struct {
  PayrollRun
  Employees []PayrollRunEmployee `json:"employees"`
+ Workflow []WorkflowEvent `json:"workflow"`
 }
 
 type CreateInput struct { Period string `json:"period"` }
