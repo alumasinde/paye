@@ -180,9 +180,9 @@ foreach($employees as $employee){$es=(string)($employee['status']??'PENDING'); i
 
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Item</th><th>Type</th><th>Tax treatment</th><th>Amount</th><?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?><th></th><?php endif; ?></tr></thead>
+                    <thead><tr><th>Item</th><th>Category</th><th>Payee / Reference</th><th>Type</th><th>Tax treatment</th><th>Amount</th><?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?><th></th><?php endif; ?></tr></thead>
                     <tbody>
-                        <tr><td><strong>Basic salary</strong></td><td>BASE</td><td>Taxable</td><td><?= h(number_format((float)($employee['basic_salary']??0),2)) ?></td><?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?><td></td><?php endif; ?></tr>
+                        <tr><td><strong>Basic salary</strong></td><td>BASE</td><td>—</td><td>BASE</td><td>Taxable</td><td><?= h(number_format((float)($employee['basic_salary']??0),2)) ?></td><?php if($status==='DRAFT' || $status==='CALCULATION_FAILED'): ?><td></td><?php endif; ?></tr>
                         <?php foreach($adjustments as $adjustment):
                             $kind=(string)($adjustment['kind']??'');
                             $treatment=$kind==='EARNING'
@@ -191,6 +191,8 @@ foreach($employees as $employee){$es=(string)($employee['status']??'PENDING'); i
                         ?>
                             <tr>
                                 <td><?= h((string)($adjustment['name']??'')) ?></td>
+                                <td><?= h((string)($adjustment['category']??'OTHER')) ?></td>
+                                <td><?= h(trim((string)($adjustment['payee']??'').' '.(string)($adjustment['reference_no']??'')) ?: '—') ?></td>
                                 <td><?= h($kind) ?></td>
                                 <td><?= h($treatment) ?></td>
                                 <td><?= h(number_format((float)($adjustment['amount']??0),2)) ?></td>
