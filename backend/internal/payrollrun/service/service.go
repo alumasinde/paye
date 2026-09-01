@@ -51,11 +51,13 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
   }
   customInputs:=make([]payrollModel.CustomDeduction,0,len(employee.Adjustments))
   customNet:=decimal.Zero
+  invalidAdjustment:=false
   for _,adjustment:=range employee.Adjustments {
    amount,amountErr:=decimal.NewFromString(adjustment.Amount)
    if amountErr!=nil || !amount.IsPositive() {
     _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,"employee has an invalid payroll adjustment")
-    continue
+    invalidAdjustment=true
+    break
    }
    switch adjustment.Kind {
    case "EARNING":
@@ -69,9 +71,11 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
     customInputs=append(customInputs,payrollModel.CustomDeduction{Name:adjustment.Name,Amount:amount,Type:deductionType})
    default:
     _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,"employee has an unsupported payroll adjustment")
-    continue
+    invalidAdjustment=true
+    break
    }
   }
+  if invalidAdjustment { continue }
   out,calcErr:=s.Calculator.Calculate(ctx,payrollService.Input{Gross:gross,Date:calculationDate,Custom:customInputs})
   if calcErr!=nil {
    _=s.Repo.SaveFailure(ctx,companyID,runID,employee.PublicID,safeError(calcErr))
