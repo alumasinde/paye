@@ -25,7 +25,7 @@
             <a class="nav-item <?= ($activeNav ?? '') === 'employees' ? 'active' : '' ?>" href="/employees">Employees</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'departments' ? 'active' : '' ?>" href="/departments">Departments</a>
             <a class="nav-item <?= ($activeNav ?? '') === 'payroll' ? 'active' : '' ?>" href="/payroll">Payroll</a>
-            <a class="nav-item <?= ($activeNav ?? '') === 'reports' ? 'active' : '' ?>" href="/reports/payroll<?= $companyContext['id'] !== '' ? '?company=' . rawurlencode($companyContext['id']) : '' ?>">Reports</a>
+            <a class="nav-item <?= ($activeNav ?? '') === 'reports' ? 'active' : '' ?>" href="/payroll<?= $companyContext['id'] !== '' ? '?company=' . rawurlencode($companyContext['id']) : '' ?>">Reports</a>
         </nav>
 
         <div class="sidebar-bottom">
