@@ -41,7 +41,8 @@ function company_context(): array
         $result = (new CompanyService())->get($companyId, auth_access_token());
         if ($result['ok']) {
             $company = (array)$result['company'];
-            $context['name'] = (string)($company['trading_name'] ?: $company['legal_name'] ?? '');
+            $tradingName = trim((string)($company['trading_name'] ?? ''));
+            $context['name'] = $tradingName !== '' ? $tradingName : (string)($company['legal_name'] ?? '');
             $context['primary_color'] = (string)($company['primary_color'] ?: $context['primary_color']);
             $context['secondary_color'] = (string)($company['secondary_color'] ?: $context['secondary_color']);
         }
