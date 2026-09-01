@@ -47,7 +47,7 @@
                 </form>
             </div>
         </header>
-        <div class="content"><?= require $viewFile; ?></div>
+        <div class="content"><?php require $viewFile; ?></div>
     </main>
 </div>
 </body>
