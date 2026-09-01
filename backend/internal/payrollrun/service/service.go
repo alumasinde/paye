@@ -120,11 +120,16 @@ func (s Service) DeleteAdjustment(ctx context.Context,companyID,userID,runID,emp
  if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return err}
  return s.Repo.DeleteAdjustment(ctx,companyID,runID,employeeRunID,adjustmentID)
 }
+func (s Service) AddBulkInput(ctx context.Context,companyID,userID,runID string,in model.BulkInput)(model.BulkInputResult,error){if err:=s.require(ctx,companyID,userID,"employees.write");err!=nil{return model.BulkInputResult{},err};a,err:=validateAdjustment(model.AdjustmentInput{Name:in.Name,Kind:in.Kind,Category:in.Category,Payee:in.Payee,ReferenceNo:in.ReferenceNo,Amount:in.Amount,Taxable:in.Taxable,ReducesTaxableIncome:in.ReducesTaxableIncome});if err!=nil{return model.BulkInputResult{},err};in.Name=a.Name;in.Kind=a.Kind;in.Category=a.Category;in.Payee=a.Payee;in.ReferenceNo=a.ReferenceNo;in.Amount=a.Amount;in.Taxable=a.Taxable;in.ReducesTaxableIncome=a.ReducesTaxableIncome;return s.Repo.AddBulkInput(ctx,companyID,runID,in)}
+
 func validateAdjustment(in model.AdjustmentInput)(model.AdjustmentInput,error){
  in.Name=strings.TrimSpace(in.Name)
  in.Kind=strings.ToUpper(strings.TrimSpace(in.Kind))
+ in.Category=strings.ToUpper(strings.TrimSpace(in.Category)); if in.Category==""{in.Category="OTHER"}
+ in.Payee=strings.TrimSpace(in.Payee); in.ReferenceNo=strings.TrimSpace(in.ReferenceNo)
  if in.Name=="" || len(in.Name)>150{return in,errors.New("adjustment name is required")}
  if in.Kind!="EARNING" && in.Kind!="DEDUCTION"{return in,errors.New("adjustment kind must be EARNING or DEDUCTION")}
+ switch in.Category{case "ALLOWANCE","BONUS","OVERTIME","COMMISSION","WELFARE","SACCO","LOAN","ADVANCE","INSURANCE","OTHER":default:return in,errors.New("unsupported payroll input category")}
  amount,err:=decimal.NewFromString(strings.TrimSpace(in.Amount));if err!=nil || !amount.IsPositive(){return in,errors.New("adjustment amount must be greater than zero")}
  in.Amount=amount.StringFixed(2)
  if in.Kind=="EARNING" {in.ReducesTaxableIncome=false}
