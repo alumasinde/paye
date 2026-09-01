@@ -35,6 +35,26 @@ type PayrollRunEmployee struct {
  RuleVersions map[string]string `json:"rule_versions,omitempty"`
  CalculatedAt *time.Time `json:"calculated_at,omitempty"`
  ErrorMessage string `json:"error_message,omitempty"`
+ Adjustments []PayrollAdjustment `json:"adjustments,omitempty"`
+}
+
+type PayrollAdjustment struct {
+ PublicID string `json:"id"`
+ Name string `json:"name"`
+ Kind string `json:"kind"`
+ Amount string `json:"amount"`
+ Taxable bool `json:"taxable"`
+ ReducesTaxableIncome bool `json:"reduces_taxable_income"`
+ CreatedAt time.Time `json:"created_at"`
+ UpdatedAt time.Time `json:"updated_at"`
+}
+
+type AdjustmentInput struct {
+ Name string `json:"name"`
+ Kind string `json:"kind"`
+ Amount string `json:"amount"`
+ Taxable bool `json:"taxable"`
+ ReducesTaxableIncome bool `json:"reduces_taxable_income"`
 }
 
 type WorkflowEvent struct {
