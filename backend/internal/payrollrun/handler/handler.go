@@ -31,11 +31,17 @@ func (h Handler) Get(w http.ResponseWriter,r *http.Request){
  out,err:=h.Service.Get(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
  if err!=nil{writeError(w,r,err);return};response.JSON(w,http.StatusOK,out)
 }
+func (h Handler) Calculate(w http.ResponseWriter,r *http.Request){
+ out,err:=h.Service.Calculate(r.Context(),r.PathValue("company_id"),middleware.UserID(r.Context()),r.PathValue("payroll_run_id"))
+ if err!=nil{writeError(w,r,err);return}
+ status:=http.StatusOK;if out.Failed>0 || out.Pending>0 {status=http.StatusUnprocessableEntity}
+ response.JSON(w,status,out)
+}
 func writeError(w http.ResponseWriter,r *http.Request,err error){
  switch{
  case errors.Is(err,companyRepo.ErrForbidden):fail(w,r,http.StatusForbidden,"FORBIDDEN","you do not have permission for this action")
  case errors.Is(err,repo.ErrNotFound):fail(w,r,http.StatusNotFound,"NOT_FOUND","requested resource was not found")
- case errors.Is(err,repo.ErrConflict):fail(w,r,http.StatusConflict,"CONFLICT","a payroll run already exists for this period")
+ case errors.Is(err,repo.ErrConflict):fail(w,r,http.StatusConflict,"CONFLICT","payroll run cannot be calculated in its current state")
  default:m:=strings.TrimSpace(err.Error());if m==""{m="request could not be completed"};fail(w,r,http.StatusUnprocessableEntity,"REQUEST_FAILED",m)
  }
 }
