@@ -42,6 +42,10 @@ type PayrollAdjustment struct {
  PublicID string `json:"id"`
  Name string `json:"name"`
  Kind string `json:"kind"`
+ Category string `json:"category"`
+ Payee string `json:"payee,omitempty"`
+ ReferenceNo string `json:"reference_no,omitempty"`
+ Source string `json:"source"`
  Amount string `json:"amount"`
  Taxable bool `json:"taxable"`
  ReducesTaxableIncome bool `json:"reduces_taxable_income"`
@@ -52,6 +56,9 @@ type PayrollAdjustment struct {
 type AdjustmentInput struct {
  Name string `json:"name"`
  Kind string `json:"kind"`
+ Category string `json:"category"`
+ Payee string `json:"payee"`
+ ReferenceNo string `json:"reference_no"`
  Amount string `json:"amount"`
  Taxable bool `json:"taxable"`
  ReducesTaxableIncome bool `json:"reduces_taxable_income"`
@@ -91,3 +98,6 @@ type CalculationSummary struct {
 
 type ValidationCheck struct { Severity string `json:"severity"`; EmployeeID string `json:"employee_id,omitempty"`; EmployeeName string `json:"employee_name,omitempty"`; Code string `json:"code"`; Message string `json:"message"` }
 type ValidationSummary struct { PayrollRun; Blocking int `json:"blocking"`; Warnings int `json:"warnings"`; Checks []ValidationCheck `json:"checks"` }
+
+type BulkInput struct { Name string `json:"name"`; Kind string `json:"kind"`; Category string `json:"category"`; Payee string `json:"payee"`; ReferenceNo string `json:"reference_no"`; Amount string `json:"amount"`; Taxable bool `json:"taxable"`; ReducesTaxableIncome bool `json:"reduces_taxable_income"`; EmployeeIDs []string `json:"employee_ids"` }
+type BulkInputResult struct { Applied int `json:"applied"`; Skipped int `json:"skipped"`; PayrollRunID string `json:"payroll_run_id"` }
