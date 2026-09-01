@@ -20,6 +20,7 @@ type Employee struct {
 	EmploymentDate time.Time `json:"employment_date"`
 	TerminationDate *time.Time `json:"termination_date,omitempty"`
 	JobTitle string `json:"job_title,omitempty"`
+	DepartmentID string `json:"department_id,omitempty"`
 	Department string `json:"department,omitempty"`
 	EmploymentType string `json:"employment_type,omitempty"`
 	Status string `json:"status"`
@@ -55,7 +56,7 @@ type CreateInput struct {
 	NHIFNumber string `json:"nhif_number"`
 	EmploymentDate string `json:"employment_date"`
 	JobTitle string `json:"job_title"`
-	Department string `json:"department"`
+	DepartmentID string `json:"department_id"`
 	EmploymentType string `json:"employment_type"`
 	BasicSalary string `json:"basic_salary"`
 	PayFrequency string `json:"pay_frequency"`
@@ -78,7 +79,7 @@ type UpdateInput struct {
 	EmploymentDate string `json:"employment_date"`
 	TerminationDate string `json:"termination_date"`
 	JobTitle string `json:"job_title"`
-	Department string `json:"department"`
+	DepartmentID string `json:"department_id"`
 	EmploymentType string `json:"employment_type"`
 	Status string `json:"status"`
 }
