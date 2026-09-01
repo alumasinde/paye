@@ -27,3 +27,6 @@ $app->router->post('/payroll/adjustment', [PayrollController::class, 'adjustment
 
 $app->router->get('/reports/payroll', [PayrollReportController::class, 'summary'], ['require_auth']);
 $app->router->get('/reports/payslip', [PayrollReportController::class, 'payslip'], ['require_auth']);
+
+$app->router->get('/settings', [SettingsController::class, 'index'], ['require_auth']);
+$app->router->post('/settings/theme', [SettingsController::class, 'updateTheme'], ['require_auth']);
