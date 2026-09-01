@@ -7,7 +7,7 @@ final class DepartmentController
         $companies=$this->companies(); $companyId=trim((string)($_GET['company']??''));
         if($companyId===''&&$companies)$companyId=(string)($companies[0]['id']??'');
         $r=$companyId!==''?(new DepartmentService())->list($companyId,auth_access_token()):['ok'=>true,'departments'=>[]];
-        view('departments/index',['title'=>'Departments','layout'=>'app','activeNav'=>'employees','user'=>auth_user(),'companies'=>$companies,'companyId'=>$companyId,'departments'=>$r['ok']?$r['departments']:[],'loadError'=>$r['ok']?'':$r['message']]);
+        view('departments/index',['title'=>'Departments','layout'=>'app','activeNav'=>'departments','user'=>auth_user(),'companies'=>$companies,'companyId'=>$companyId,'departments'=>$r['ok']?$r['departments']:[],'loadError'=>$r['ok']?'':$r['message']]);
     }
     public function showCreate(): void {
         $companies=$this->companies();$companyId=trim((string)($_GET['company']??''));$old=Session::flash('old');
