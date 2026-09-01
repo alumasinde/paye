@@ -31,6 +31,13 @@ final class PayrollReportController
         $result = (new PayrollReportService())->get($companyId, $runId, auth_access_token());
         if (!$result['ok']) { Session::flash('error', $result['message']); redirect('/payroll?company=' . rawurlencode($companyId)); }
 
+        $run = (array)($result['report']['run'] ?? []);
+        $status = strtoupper(trim((string)($run['status'] ?? '')));
+        if (!in_array($status, ['FINALIZED', 'LOCKED'], true)) {
+            Session::flash('error', 'Payslips are available after the payroll has been finalized.');
+            redirect('/reports/payroll?company=' . rawurlencode($companyId) . '&run=' . rawurlencode($runId));
+        }
+
         $employee = null;
         foreach ($result['report']['employees'] as $item) if ((string)($item['id'] ?? '') === $employeeId) { $employee = $item; break; }
         if (!$employee) { Session::flash('error', 'Employee was not found in this payroll run.'); redirect('/reports/payroll?company=' . rawurlencode($companyId) . '&run=' . rawurlencode($runId)); }
@@ -45,7 +52,7 @@ final class PayrollReportController
             'user' => auth_user(),
             'companyId' => $companyId,
             'company' => $company,
-            'run' => $result['report']['run'],
+            'run' => $run,
             'employee' => $employee,
         ]);
     }
