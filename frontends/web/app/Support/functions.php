@@ -18,3 +18,36 @@ function require_auth(): void { if (!is_authenticated()) redirect('/login'); }
 function require_guest(): void { if (is_authenticated()) redirect('/dashboard'); }
 function auth_user(): array { return (array)($_SESSION['auth']['user'] ?? []); }
 function auth_access_token(): string { return (string)($_SESSION['auth']['access_token'] ?? ''); }
+
+
+function company_context(): array
+{
+    static $loaded = false;
+    static $context = [];
+    if ($loaded) return $context;
+    $loaded = true;
+
+    $companyId = trim((string)($_GET['company'] ?? $_POST['company_id'] ?? ''));
+    $context = [
+        'id' => $companyId,
+        'name' => '',
+        'primary_color' => '#15803D',
+        'secondary_color' => '#166534',
+    ];
+
+    if ($companyId === '' || !is_authenticated() || !class_exists('CompanyService')) return $context;
+
+    try {
+        $result = (new CompanyService())->get($companyId, auth_access_token());
+        if ($result['ok']) {
+            $company = (array)$result['company'];
+            $context['name'] = (string)($company['trading_name'] ?: $company['legal_name'] ?? '');
+            $context['primary_color'] = (string)($company['primary_color'] ?: $context['primary_color']);
+            $context['secondary_color'] = (string)($company['secondary_color'] ?: $context['secondary_color']);
+        }
+    } catch (Throwable) {
+        // Keep the default theme if company context cannot be loaded.
+    }
+
+    return $context;
+}
