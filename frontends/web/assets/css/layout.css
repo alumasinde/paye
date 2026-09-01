@@ -1,0 +1,18 @@
+.shell{min-height:100vh;display:flex}
+.sidebar{position:fixed;inset:0 auto 0 0;width:248px;background:var(--sidebar);color:#fff;padding:18px 12px;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.04)}
+.sidebar-brand-row{padding:2px 8px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:850;font-size:16px;letter-spacing:-.01em}
+.brand-mark{width:31px;height:31px;border-radius:10px;background:#fff;color:var(--sidebar);display:grid;place-items:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.company-context{margin:14px 8px 8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.065);font-size:12px;font-weight:800;color:#dce4ef;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-nav{display:grid;gap:4px;margin-top:10px}
+.nav-item{min-height:42px;display:flex;align-items:center;padding:0 12px;border-radius:9px;color:#aeb9c8;text-decoration:none;font-size:13px;font-weight:750;transition:background .15s,color .15s}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nav-item.active{color:#fff;background:var(--sidebar-active);box-shadow:inset 3px 0 0 var(--brand)}
+.sidebar-bottom{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.main{margin-left:248px;flex:1;min-width:0}
+.topbar{height:72px;padding:0 36px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:4;backdrop-filter:blur(10px)}
+.topbar-title{display:flex;align-items:baseline;gap:12px;min-width:0}.topbar h1{margin:0;font-size:18px;letter-spacing:-.015em}.topbar-title>span{font-size:12px;color:var(--muted);font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-menu{display:flex;align-items:center;gap:14px}.account-name{font-weight:800;font-size:13px}.icon-button{border:1px solid var(--line-strong);background:#fff;color:#475467;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:750}
+.icon-button:hover{background:var(--surface-subtle)}
+.content{max-width:1480px;margin:auto;padding:28px 36px 44px}
+.page-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:20px}.page-heading h2{font-size:27px;letter-spacing:-.03em;margin:2px 0 4px}.eyebrow{margin:0 0 6px;font-size:10px;letter-spacing:.11em;font-weight:850;color:var(--muted)}.muted{color:var(--muted);margin:0}.back-link,.text-link{color:var(--brand);font-weight:750;text-decoration:none}.back-link{display:inline-block;margin-bottom:12px;font-size:12px}.text-link:hover,.back-link:hover{text-decoration:underline}
