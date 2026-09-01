@@ -40,6 +40,12 @@ type EmployeeDetail struct {
 	CurrentSalary *Salary `json:"current_salary,omitempty"`
 }
 
+type SalaryInput struct {
+	BasicSalary string `json:"basic_salary"`
+	PayFrequency string `json:"pay_frequency"`
+	EffectiveFrom string `json:"effective_from"`
+}
+
 type CreateInput struct {
 	EmployeeNumber string `json:"employee_number"`
 	FirstName string `json:"first_name"`
