@@ -37,10 +37,10 @@ func (r Repository) CreateCompany(ctx context.Context, userPublicID string, in m
 	publicID := uuid.NewString()
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO companies
-		(public_id,legal_name,trading_name,kra_pin,email,phone,country_code,currency_code,payroll_frequency,created_by)
-		VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		(public_id,legal_name,trading_name,kra_pin,email,phone,country_code,currency_code,payroll_frequency,primary_color,secondary_color,created_by)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
 		publicID, in.LegalName, nullable(in.TradingName), in.KRAPIN, in.Email,
-		nullable(in.Phone), in.CountryCode, in.CurrencyCode, in.PayrollFrequency, userID,
+		nullable(in.Phone), in.CountryCode, in.CurrencyCode, in.PayrollFrequency, in.PrimaryColor, in.SecondaryColor, userID,
 	)
 	if err != nil {
 		if isDuplicate(err) {
@@ -91,7 +91,7 @@ func (r Repository) CreateCompany(ctx context.Context, userPublicID string, in m
 func (r Repository) ListCompanies(ctx context.Context, userPublicID string) ([]model.Company, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT c.public_id,c.legal_name,COALESCE(c.trading_name,''),c.kra_pin,c.email,
-		       COALESCE(c.phone,''),c.country_code,c.currency_code,c.payroll_frequency,c.status,c.created_at
+		       COALESCE(c.phone,''),c.country_code,c.currency_code,c.payroll_frequency,c.status,c.primary_color,c.secondary_color,c.created_at
 		FROM companies c
 		JOIN company_members cm ON cm.company_id=c.id AND cm.status='ACTIVE'
 		JOIN users u ON u.id=cm.user_id
@@ -104,7 +104,7 @@ func (r Repository) ListCompanies(ctx context.Context, userPublicID string) ([]m
 	out := make([]model.Company, 0)
 	for rows.Next() {
 		var c model.Company
-		if err := rows.Scan(&c.PublicID,&c.LegalName,&c.TradingName,&c.KRAPIN,&c.Email,&c.Phone,&c.CountryCode,&c.CurrencyCode,&c.PayrollFrequency,&c.Status,&c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.PublicID,&c.LegalName,&c.TradingName,&c.KRAPIN,&c.Email,&c.Phone,&c.CountryCode,&c.CurrencyCode,&c.PayrollFrequency,&c.Status,&c.PrimaryColor,&c.SecondaryColor,&c.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -116,12 +116,12 @@ func (r Repository) Company(ctx context.Context, companyPublicID, userPublicID s
 	var c model.Company
 	err := r.DB.QueryRowContext(ctx, `
 		SELECT c.public_id,c.legal_name,COALESCE(c.trading_name,''),c.kra_pin,c.email,
-		       COALESCE(c.phone,''),c.country_code,c.currency_code,c.payroll_frequency,c.status,c.created_at
+		       COALESCE(c.phone,''),c.country_code,c.currency_code,c.payroll_frequency,c.status,c.primary_color,c.secondary_color,c.created_at
 		FROM companies c
 		JOIN company_members cm ON cm.company_id=c.id AND cm.status='ACTIVE'
 		JOIN users u ON u.id=cm.user_id
 		WHERE c.public_id=? AND u.public_id=?`, companyPublicID, userPublicID).
-		Scan(&c.PublicID,&c.LegalName,&c.TradingName,&c.KRAPIN,&c.Email,&c.Phone,&c.CountryCode,&c.CurrencyCode,&c.PayrollFrequency,&c.Status,&c.CreatedAt)
+		Scan(&c.PublicID,&c.LegalName,&c.TradingName,&c.KRAPIN,&c.Email,&c.Phone,&c.CountryCode,&c.CurrencyCode,&c.PayrollFrequency,&c.Status,&c.PrimaryColor,&c.SecondaryColor,&c.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Company{}, ErrNotFound
 	}
@@ -131,10 +131,10 @@ func (r Repository) Company(ctx context.Context, companyPublicID, userPublicID s
 func (r Repository) UpdateCompany(ctx context.Context, companyPublicID string, in model.UpdateCompanyInput) (model.Company, error) {
 	res, err := r.DB.ExecContext(ctx, `
 		UPDATE companies
-		SET legal_name=?,trading_name=?,email=?,phone=?,country_code=?,currency_code=?,payroll_frequency=?
+		SET legal_name=?,trading_name=?,email=?,phone=?,country_code=?,currency_code=?,payroll_frequency=?,primary_color=?,secondary_color=?
 		WHERE public_id=? AND status='ACTIVE'`,
 		in.LegalName, nullable(in.TradingName), in.Email, nullable(in.Phone),
-		in.CountryCode, in.CurrencyCode, in.PayrollFrequency, companyPublicID,
+		in.CountryCode, in.CurrencyCode, in.PayrollFrequency, in.PrimaryColor, in.SecondaryColor, companyPublicID,
 	)
 	if err != nil {
 		return model.Company{}, err
@@ -334,9 +334,9 @@ func (r Repository) companyByPublicID(ctx context.Context, publicID string) (mod
 	var c model.Company
 	err := r.DB.QueryRowContext(ctx, `
 		SELECT public_id,legal_name,COALESCE(trading_name,''),kra_pin,email,COALESCE(phone,''),
-		       country_code,currency_code,payroll_frequency,status,created_at
+		       country_code,currency_code,payroll_frequency,status,primary_color,secondary_color,created_at
 		FROM companies WHERE public_id=?`, publicID).
-		Scan(&c.PublicID,&c.LegalName,&c.TradingName,&c.KRAPIN,&c.Email,&c.Phone,&c.CountryCode,&c.CurrencyCode,&c.PayrollFrequency,&c.Status,&c.CreatedAt)
+		Scan(&c.PublicID,&c.LegalName,&c.TradingName,&c.KRAPIN,&c.Email,&c.Phone,&c.CountryCode,&c.CurrencyCode,&c.PayrollFrequency,&c.Status,&c.PrimaryColor,&c.SecondaryColor,&c.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Company{}, ErrNotFound
 	}
