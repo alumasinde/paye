@@ -165,6 +165,8 @@ func NewFromEnv() (*App, error) {
 	mux.Handle("GET /api/v1/companies/{company_id}/employees", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.List)))
 	mux.Handle("GET /api/v1/companies/{company_id}/employees/{employee_id}", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.Get)))
 	mux.Handle("PATCH /api/v1/companies/{company_id}/employees/{employee_id}", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.Update)))
+	mux.Handle("GET /api/v1/companies/{company_id}/employees/{employee_id}/salary-history", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.SalaryHistory)))
+	mux.Handle("POST /api/v1/companies/{company_id}/employees/{employee_id}/salary-history", middleware.RequireAuth(secret, http.HandlerFunc(employeeH.AddSalary)))
 	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Create)))
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.List)))
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Get)))
