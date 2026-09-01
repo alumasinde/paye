@@ -10,6 +10,10 @@ $app->router->get('/companies', [CompanyController::class, 'index'], ['require_a
 $app->router->get('/companies/create', [CompanyController::class, 'showCreate'], ['require_auth']);
 $app->router->post('/companies', [CompanyController::class, 'create'], ['require_auth']);
 
+$app->router->get('/departments', [DepartmentController::class, 'index'], ['require_auth']);
+$app->router->get('/departments/create', [DepartmentController::class, 'showCreate'], ['require_auth']);
+$app->router->post('/departments', [DepartmentController::class, 'create'], ['require_auth']);
+
 $app->router->get('/employees', [EmployeeController::class, 'index'], ['require_auth']);
 $app->router->get('/employees/create', [EmployeeController::class, 'showCreate'], ['require_auth']);
 $app->router->post('/employees', [EmployeeController::class, 'create'], ['require_auth']);
