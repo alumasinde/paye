@@ -13,6 +13,8 @@ type Company struct {
 	CurrencyCode    string    `json:"currency_code"`
 	PayrollFrequency string   `json:"payroll_frequency"`
 	Status          string    `json:"status"`
+	PrimaryColor    string    `json:"primary_color"`
+	SecondaryColor  string    `json:"secondary_color"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 
@@ -46,6 +48,8 @@ type CreateCompanyInput struct {
 	CountryCode      string
 	CurrencyCode     string
 	PayrollFrequency string
+	PrimaryColor    string
+	SecondaryColor  string
 }
 
 type UpdateCompanyInput struct {
