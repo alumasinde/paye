@@ -43,8 +43,10 @@ function company_context(): array
             $company = (array)$result['company'];
             $tradingName = trim((string)($company['trading_name'] ?? ''));
             $context['name'] = $tradingName !== '' ? $tradingName : (string)($company['legal_name'] ?? '');
-            $context['primary_color'] = (string)($company['primary_color'] ?: $context['primary_color']);
-            $context['secondary_color'] = (string)($company['secondary_color'] ?: $context['secondary_color']);
+            $primary = trim((string)($company['primary_color'] ?? ''));
+            $secondary = trim((string)($company['secondary_color'] ?? ''));
+            if ($primary !== '') $context['primary_color'] = $primary;
+            if ($secondary !== '') $context['secondary_color'] = $secondary;
         }
     } catch (Throwable) {
         // Keep the default theme if company context cannot be loaded.
