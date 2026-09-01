@@ -346,3 +346,35 @@ func (r Repository) RefreshEmployees(ctx context.Context, companyPublicID, runPu
  if err:=tx.Commit();err!=nil{return model.Detail{},err}
  return r.Get(ctx,companyPublicID,runPublicID)
 }
+
+
+func (r Repository) Reopen(ctx context.Context, companyPublicID, runPublicID, userID string)(model.WorkflowSummary,error){
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.WorkflowSummary{},err}
+ tx,err:=r.DB.BeginTx(ctx,nil);if err!=nil{return model.WorkflowSummary{},err};defer tx.Rollback()
+ var runID uint64;var period,from string;var start,end time.Time
+ err=tx.QueryRowContext(ctx,`SELECT id,period_key,status,period_start,period_end FROM payroll_runs WHERE company_id=? AND public_id=? FOR UPDATE`,cid,runPublicID).Scan(&runID,&period,&from,&start,&end)
+ if errors.Is(err,sql.ErrNoRows){return model.WorkflowSummary{},ErrNotFound};if err!=nil{return model.WorkflowSummary{},err}
+ if from!="CALCULATED" && from!="CALCULATION_FAILED"{return model.WorkflowSummary{},ErrConflict}
+ if _,err=tx.ExecContext(ctx,`UPDATE payroll_run_employees SET status='PENDING',gross_salary=NULL,taxable_income=NULL,paye_before_relief=NULL,relief=NULL,paye=NULL,statutory_deductions=NULL,custom_deductions=NULL,total_deductions=NULL,net_salary=NULL,rule_versions=NULL,calculated_at=NULL,error_message=NULL WHERE payroll_run_id=?`,runID);err!=nil{return model.WorkflowSummary{},err}
+ if _,err=tx.ExecContext(ctx,`UPDATE payroll_runs SET status='DRAFT' WHERE id=?`,runID);err!=nil{return model.WorkflowSummary{},err}
+ _,err=tx.ExecContext(ctx,`INSERT INTO payroll_run_workflow_events(payroll_run_id,actor_user_id,action,from_status,to_status) VALUES(?,?,?,?,?)`,runID,userID,"REOPEN",from,"DRAFT");if err!=nil{return model.WorkflowSummary{},err}
+ if err=tx.Commit();err!=nil{return model.WorkflowSummary{},err}
+ return model.WorkflowSummary{PayrollRun:model.PayrollRun{PublicID:runPublicID,Period:period,PeriodStart:start,PeriodEnd:end,Status:"DRAFT"},Action:"REOPEN"},nil
+}
+
+func (r Repository) Validate(ctx context.Context, companyPublicID, runPublicID string)(model.ValidationSummary,error){
+ cid,err:=r.companyID(ctx,companyPublicID);if err!=nil{return model.ValidationSummary{},err}
+ var runID uint64;var status string
+ err=r.DB.QueryRowContext(ctx,`SELECT id,status FROM payroll_runs WHERE company_id=? AND public_id=?`,cid,runPublicID).Scan(&runID,&status)
+ if errors.Is(err,sql.ErrNoRows){return model.ValidationSummary{},ErrNotFound};if err!=nil{return model.ValidationSummary{},err}
+ out:=model.ValidationSummary{PayrollRun:model.PayrollRun{PublicID:runPublicID,Status:status},Checks:[]model.ValidationCheck{}}
+ rows,err:=r.DB.QueryContext(ctx,`SELECT pre.public_id,CONCAT_WS(' ',pre.first_name,pre.middle_name,pre.last_name),COALESCE(e.kra_pin,''),COALESCE(e.nssf_number,''),COALESCE(e.shif_number,''),pre.basic_salary FROM payroll_run_employees pre JOIN employees e ON e.id=pre.employee_id WHERE pre.payroll_run_id=?`,runID);if err!=nil{return out,err};defer rows.Close()
+ out.Checks=append(out.Checks,model.ValidationCheck{Severity:"INFO",Code:"EMPLOYEE_COUNT",Message:"Employee snapshot loaded"})
+ for rows.Next(){var id,name,kra,nssf,shif,salary string;if err:=rows.Scan(&id,&name,&kra,&nssf,&shif,&salary);err!=nil{return out,err}
+  if strings.TrimSpace(salary)=="" || salary=="0" || salary=="0.00"{out.Blocking++;out.Checks=append(out.Checks,model.ValidationCheck{Severity:"BLOCKING",EmployeeID:id,EmployeeName:name,Code:"MISSING_SALARY",Message:"Employee has no valid salary snapshot"})}
+  if strings.TrimSpace(kra)==""{out.Warnings++;out.Checks=append(out.Checks,model.ValidationCheck{Severity:"WARNING",EmployeeID:id,EmployeeName:name,Code:"MISSING_KRA_PIN",Message:"Employee is missing a KRA PIN"})}
+  if strings.TrimSpace(nssf)==""{out.Warnings++;out.Checks=append(out.Checks,model.ValidationCheck{Severity:"WARNING",EmployeeID:id,EmployeeName:name,Code:"MISSING_NSSF",Message:"Employee is missing an NSSF number"})}
+  if strings.TrimSpace(shif)==""{out.Warnings++;out.Checks=append(out.Checks,model.ValidationCheck{Severity:"WARNING",EmployeeID:id,EmployeeName:name,Code:"MISSING_SHIF",Message:"Employee is missing a SHIF number"})}
+ }
+ if err:=rows.Err();err!=nil{return out,err};return out,nil
+}
