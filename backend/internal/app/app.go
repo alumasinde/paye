@@ -172,6 +172,8 @@ func NewFromEnv() (*App, error) {
 	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Get)))
 	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/calculate", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Calculate)))
 	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/refresh-employees", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.RefreshEmployees)))
+	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/reopen", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Reopen)))
+	mux.Handle("GET /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/validation", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.Validate)))
 	mux.Handle("POST /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/employees/{employee_run_id}/adjustments", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.AddAdjustment)))
 	mux.Handle("PATCH /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/employees/{employee_run_id}/adjustments/{adjustment_id}", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.UpdateAdjustment)))
 	mux.Handle("DELETE /api/v1/companies/{company_id}/payroll-runs/{payroll_run_id}/employees/{employee_run_id}/adjustments/{adjustment_id}", middleware.RequireAuth(secret, http.HandlerFunc(payrollRunH.DeleteAdjustment)))
