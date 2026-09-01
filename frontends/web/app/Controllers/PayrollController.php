@@ -92,6 +92,40 @@ final class PayrollController
         ]);
     }
 
+    public function adjustment(): void
+    {
+        verify_csrf();
+        $companies = $this->companies();
+        $companyId = $this->selectedCompany($companies);
+        $runId = trim((string)($_POST['run_id'] ?? ''));
+        $employeeRunId = trim((string)($_POST['employee_run_id'] ?? ''));
+        $operation = trim((string)($_POST['operation'] ?? 'create'));
+        $service = new PayrollRunService();
+
+        if ($companyId === '' || $runId === '' || $employeeRunId === '') {
+            Session::flash('error', 'Payroll adjustment request is incomplete.');
+            redirect('/payroll?company=' . rawurlencode($companyId));
+        }
+
+        if ($operation === 'delete') {
+            $adjustmentId = trim((string)($_POST['adjustment_id'] ?? ''));
+            $result = $adjustmentId === ''
+                ? ['ok' => false, 'message' => 'Adjustment was not found.']
+                : $service->deleteAdjustment($companyId, $runId, $employeeRunId, $adjustmentId, auth_access_token());
+        } else {
+            $result = $service->addAdjustment($companyId, $runId, $employeeRunId, [
+                'name' => trim((string)($_POST['name'] ?? '')),
+                'kind' => trim((string)($_POST['kind'] ?? '')),
+                'amount' => trim((string)($_POST['amount'] ?? '')),
+                'taxable' => isset($_POST['taxable']),
+                'reduces_taxable_income' => isset($_POST['reduces_taxable_income']),
+            ], auth_access_token());
+        }
+
+        Session::flash($result['ok'] ? 'success' : 'error', $result['ok'] ? ($operation === 'delete' ? 'Adjustment removed.' : 'Adjustment added to the payroll breakdown.') : $result['message']);
+        redirect('/payroll/run?run=' . rawurlencode($runId) . '&company=' . rawurlencode($companyId) . '#adjustments');
+    }
+
     public function action(): void
     {
         verify_csrf();
