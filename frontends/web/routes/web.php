@@ -35,6 +35,7 @@ $app->router->post('/payroll/action', [PayrollController::class, 'action'], ['re
 $app->router->post('/payroll/refresh-employees', [PayrollController::class, 'refreshEmployees'], ['require_auth']);
 $app->router->post('/payroll/validate', [PayrollController::class, 'validate'], ['require_auth']);
 $app->router->post('/payroll/adjustment', [PayrollController::class, 'adjustment'], ['require_auth']);
+$app->router->post('/payroll/input/bulk', [PayrollController::class, 'bulkInput'], ['require_auth']);
 
 $app->router->get('/reports/payroll', [PayrollReportController::class, 'summary'], ['require_auth']);
 $app->router->get('/reports/payslip', [PayrollReportController::class, 'payslip'], ['require_auth']);
