@@ -32,6 +32,9 @@ final class PayrollRunService
         return $this->api->request('DELETE', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/employees/' . rawurlencode($employeeRunId) . '/adjustments/' . rawurlencode($adjustmentId), null, $token);
     }
 
+    public function addBulkInput(string $companyId, string $runId, array $data, string $token): array
+    { return $this->api->request('POST', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/inputs/bulk', $data, $token); }
+
     public function validate(string $companyId, string $runId, string $token): array
     { return $this->api->request('GET', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/validation', null, $token); }
 
