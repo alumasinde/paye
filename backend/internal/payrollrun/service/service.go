@@ -70,7 +70,7 @@ func (s Service) Calculate(ctx context.Context,companyID,userID,runID string)(mo
   employee.RuleVersions=out.RuleVersions
   if err:=s.Repo.SaveCalculation(ctx,companyID,runID,employee.PublicID,employee);err!=nil{return model.CalculationSummary{},err}
  }
- return s.Repo.FinalizeCalculation(ctx,companyID,runID)
+ return s.Repo.FinalizeCalculation(ctx,companyID,runID,userID)
 }
 
 func safeError(err error) string { v:=strings.TrimSpace(err.Error());if v==""{return "calculation failed"};if len(v)>500{return v[:500]};return v }
