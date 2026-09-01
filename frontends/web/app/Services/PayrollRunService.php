@@ -32,6 +32,9 @@ final class PayrollRunService
         return $this->api->request('DELETE', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/employees/' . rawurlencode($employeeRunId) . '/adjustments/' . rawurlencode($adjustmentId), null, $token);
     }
 
+    public function validate(string $companyId, string $runId, string $token): array
+    { return $this->api->request('GET', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/validation', null, $token); }
+
     public function refreshEmployees(string $companyId, string $runId, string $token): array
     {
         return $this->api->request('POST', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/refresh-employees', [], $token);
@@ -39,7 +42,7 @@ final class PayrollRunService
 
     public function action(string $companyId, string $runId, string $action, string $token): array
     {
-        $allowed = ['calculate', 'review', 'approve', 'finalize', 'lock'];
+        $allowed = ['calculate', 'review', 'approve', 'finalize', 'lock', 'reopen'];
         if (!in_array($action, $allowed, true)) return ['ok' => false, 'message' => 'Unsupported payroll action.'];
         return $this->api->request('POST', '/companies/' . rawurlencode($companyId) . '/payroll-runs/' . rawurlencode($runId) . '/' . $action, [], $token);
     }
