@@ -23,6 +23,18 @@ type PayrollRunEmployee struct {
  BasicSalary string `json:"basic_salary"`
  PayFrequency string `json:"pay_frequency"`
  Status string `json:"status"`
+ GrossSalary string `json:"gross_salary,omitempty"`
+ TaxableIncome string `json:"taxable_income,omitempty"`
+ PAYEBeforeRelief string `json:"paye_before_relief,omitempty"`
+ Relief string `json:"relief,omitempty"`
+ PAYE string `json:"paye,omitempty"`
+ StatutoryDeductions string `json:"statutory_deductions,omitempty"`
+ CustomDeductions string `json:"custom_deductions,omitempty"`
+ TotalDeductions string `json:"total_deductions,omitempty"`
+ NetSalary string `json:"net_salary,omitempty"`
+ RuleVersions map[string]string `json:"rule_versions,omitempty"`
+ CalculatedAt *time.Time `json:"calculated_at,omitempty"`
+ ErrorMessage string `json:"error_message,omitempty"`
 }
 
 type Detail struct {
@@ -30,6 +42,11 @@ type Detail struct {
  Employees []PayrollRunEmployee `json:"employees"`
 }
 
-type CreateInput struct {
- Period string `json:"period"`
+type CreateInput struct { Period string `json:"period"` }
+
+type CalculationSummary struct {
+ PayrollRun
+ Processed int `json:"processed"`
+ Failed int `json:"failed"`
+ Pending int `json:"pending"`
 }
